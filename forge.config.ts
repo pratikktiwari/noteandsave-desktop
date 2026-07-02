@@ -13,6 +13,7 @@ const config: ForgeConfig = {
     // Disable asar to simplify runtime access to the sql.js WASM asset in node_modules
     asar: false,
     icon: './assets/icon',
+    executableName: 'noteandsave-desktop',
     ignore: (file: string) => {
       if (!file) return false;
       if (file.startsWith('/.vite')) return false;
