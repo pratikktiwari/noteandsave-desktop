@@ -1,8 +1,8 @@
 import { app } from 'electron';
-import Database from 'better-sqlite3';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import initSqlJs, { Database as SqlJsDatabase } from 'sql.js';
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
@@ -131,7 +131,8 @@ export interface SaveImageInput {
 }
 
 let databasePathOverride: string | null = null;
-let database: Database.Database | null = null;
+let database: SqlJsDatabase | null = null;
+let databaseInitialization: Promise<void> | null = null;
 
 type NoteRow = {
   id: string;
@@ -176,7 +177,7 @@ type RevisionRow = {
 
 type ImageRow = {
   id: string;
-  data: Buffer;
+  data: Buffer | Uint8Array;
   mime_type: string;
   created_at: number;
 };
@@ -185,6 +186,8 @@ type SettingRow = {
   key: string;
   value: string;
 };
+
+type SqlParam = string | number | null | Uint8Array;
 
 const getDefaultDbPath = (): string =>
   path.join(app.getPath('documents'), 'NoteAndSave', 'workspace.db');
@@ -202,6 +205,8 @@ export const setDbPath = (nextPath: string): void => {
     database.close();
     database = null;
   }
+
+  databaseInitialization = null;
 };
 
 const ensureDirectoryExists = (filePath: string): void => {
@@ -266,14 +271,104 @@ const toImageRecord = (row: ImageRow): ImageRecord => ({
   createdAt: row.created_at,
 });
 
-const runMigrations = (db: Database.Database): void => {
-  const currentVersion = db.pragma('user_version', { simple: true }) as number;
+const getDatabase = (): SqlJsDatabase => {
+  if (!database) {
+    throw new Error('Database has not been initialized. Call initDatabase() before using database APIs.');
+  }
+
+  return database;
+};
+
+const saveToFile = (): void => {
+  const db = getDatabase();
+  const resolvedPath = getDbPath();
+  ensureDirectoryExists(resolvedPath);
+  fs.writeFileSync(resolvedPath, Buffer.from(db.export()));
+};
+
+const queryAllFromDatabase = <T>(db: SqlJsDatabase, sql: string, params: SqlParam[] = []): T[] => {
+  const stmt = db.prepare(sql);
+
+  try {
+    if (params.length > 0) {
+      stmt.bind(params);
+    }
+
+    const rows: T[] = [];
+    while (stmt.step()) {
+      rows.push(stmt.getAsObject() as T);
+    }
+
+    return rows;
+  } finally {
+    stmt.free();
+  }
+};
+
+const queryOneFromDatabase = <T>(db: SqlJsDatabase, sql: string, params: SqlParam[] = []): T | undefined => {
+  const stmt = db.prepare(sql);
+
+  try {
+    if (params.length > 0) {
+      stmt.bind(params);
+    }
+
+    if (stmt.step()) {
+      return stmt.getAsObject() as T;
+    }
+
+    return undefined;
+  } finally {
+    stmt.free();
+  }
+};
+
+const queryAll = <T>(sql: string, params: SqlParam[] = []): T[] =>
+  queryAllFromDatabase<T>(getDatabase(), sql, params);
+
+const queryOne = <T>(sql: string, params: SqlParam[] = []): T | undefined =>
+  queryOneFromDatabase<T>(getDatabase(), sql, params);
+
+const execute = (sql: string, params: SqlParam[] = [], persist = true): number => {
+  const db = getDatabase();
+  db.run(sql, params);
+  const modifiedRows = db.getRowsModified();
+
+  if (persist) {
+    saveToFile();
+  }
+
+  return modifiedRows;
+};
+
+const runInTransaction = <T>(operation: () => T): T => {
+  const db = getDatabase();
+  db.run('BEGIN TRANSACTION');
+
+  try {
+    const result = operation();
+    db.run('COMMIT');
+    saveToFile();
+    return result;
+  } catch (error) {
+    try {
+      db.run('ROLLBACK');
+    } catch {
+      // no-op
+    }
+
+    throw error;
+  }
+};
+
+const runMigrations = (db: SqlJsDatabase): void => {
+  const currentVersion = Number(queryOneFromDatabase<{ user_version: number }>(db, 'PRAGMA user_version')?.user_version ?? 0);
 
   if (currentVersion >= 1) {
     return;
   }
 
-  db.transaction(() => {
+  runInTransaction(() => {
     db.exec(`
       CREATE TABLE IF NOT EXISTS notes (
         id TEXT PRIMARY KEY,
@@ -335,20 +430,39 @@ const runMigrations = (db: Database.Database): void => {
       CREATE INDEX IF NOT EXISTS idx_revisions_note_id_timestamp ON revisions (note_id, timestamp DESC);
     `);
 
-    db.pragma('user_version = 1');
-  })();
+    db.run('PRAGMA user_version = 1');
+  });
 };
 
-const getDatabase = (): Database.Database => {
-  if (!database) {
-    const resolvedPath = getDbPath();
-    ensureDirectoryExists(resolvedPath);
-    database = new Database(resolvedPath);
-    database.pragma('journal_mode = WAL');
-    runMigrations(database);
+export const initDatabase = async (): Promise<void> => {
+  if (database) {
+    return;
   }
 
-  return database;
+  if (databaseInitialization) {
+    return databaseInitialization;
+  }
+
+  databaseInitialization = (async () => {
+    // Load WASM binary directly for reliable resolution in packaged app
+    const appRoot = app.getAppPath();
+    const wasmPath = path.join(appRoot, 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm');
+
+    const wasmBinary = fs.readFileSync(wasmPath);
+    const SQL = await initSqlJs({ wasmBinary });
+
+    const resolvedPath = getDbPath();
+    ensureDirectoryExists(resolvedPath);
+
+    const shouldLoadFromDisk = fs.existsSync(resolvedPath) && fs.statSync(resolvedPath).size > 0;
+    database = shouldLoadFromDisk ? new SQL.Database(fs.readFileSync(resolvedPath)) : new SQL.Database();
+    database.run('PRAGMA journal_mode = WAL');
+    runMigrations(database);
+  })().finally(() => {
+    databaseInitialization = null;
+  });
+
+  return databaseInitialization;
 };
 
 const getTimestamp = (): number => Date.now();
@@ -356,7 +470,6 @@ const getTimestamp = (): number => Date.now();
 const makeCopyTitle = (title: string): string => (title ? `${title} (Copy)` : 'Untitled Copy');
 
 export const createNote = (input: CreateNoteInput = {}): Note => {
-  const db = getDatabase();
   const timestamp = input.createdAt ?? getTimestamp();
   const note: Note = {
     id: input.id ?? randomUUID(),
@@ -372,29 +485,30 @@ export const createNote = (input: CreateNoteInput = {}): Note => {
     type: input.type ?? 'note',
   };
 
-  db.prepare(
+  execute(
     `INSERT INTO notes (
       id, title, content, created_at, updated_at, folder_id, tags, pinned, favorite, deleted, type
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    note.id,
-    note.title,
-    serializeJson(note.content),
-    note.createdAt,
-    note.updatedAt,
-    note.folderId,
-    serializeJson(note.tags),
-    Number(note.pinned),
-    Number(note.favorite),
-    Number(note.deleted),
-    note.type,
+    [
+      note.id,
+      note.title,
+      serializeJson(note.content),
+      note.createdAt,
+      note.updatedAt,
+      note.folderId,
+      serializeJson(note.tags),
+      Number(note.pinned),
+      Number(note.favorite),
+      Number(note.deleted),
+      note.type,
+    ],
   );
 
   return note;
 };
 
 export const getNote = (id: string): Note | null => {
-  const row = getDatabase().prepare('SELECT * FROM notes WHERE id = ?').get(id) as NoteRow | undefined;
+  const row = queryOne<NoteRow>('SELECT * FROM notes WHERE id = ?', [id]);
   return row ? toNote(row) : null;
 };
 
@@ -413,13 +527,11 @@ export const updateNote = (id: string, updates: UpdateNoteInput): Note | null =>
     updatedAt: updates.updatedAt ?? getTimestamp(),
   };
 
-  getDatabase()
-    .prepare(
-      `UPDATE notes
-       SET title = ?, content = ?, updated_at = ?, folder_id = ?, tags = ?, pinned = ?, favorite = ?, deleted = ?, type = ?
-       WHERE id = ?`,
-    )
-    .run(
+  execute(
+    `UPDATE notes
+     SET title = ?, content = ?, updated_at = ?, folder_id = ?, tags = ?, pinned = ?, favorite = ?, deleted = ?, type = ?
+     WHERE id = ?`,
+    [
       nextNote.title,
       serializeJson(nextNote.content),
       nextNote.updatedAt,
@@ -430,44 +542,31 @@ export const updateNote = (id: string, updates: UpdateNoteInput): Note | null =>
       Number(nextNote.deleted),
       nextNote.type,
       id,
-    );
+    ],
+  );
 
   return getNote(id);
 };
 
-export const listNotes = (includeDeleted = false): Note[] => {
-  const rows = getDatabase()
-    .prepare(
-      `SELECT * FROM notes
-       WHERE ? = 1 OR deleted = 0
-       ORDER BY pinned DESC, favorite DESC, updated_at DESC`,
-    )
-    .all(Number(includeDeleted)) as NoteRow[];
+export const listNotes = (includeDeleted = false): Note[] =>
+  queryAll<NoteRow>(
+    `SELECT * FROM notes
+     WHERE ? = 1 OR deleted = 0
+     ORDER BY pinned DESC, favorite DESC, updated_at DESC`,
+    [Number(includeDeleted)],
+  ).map(toNote);
 
-  return rows.map(toNote);
-};
-
-export const listDeletedNotes = (): Note[] => {
-  const rows = getDatabase()
-    .prepare('SELECT * FROM notes WHERE deleted = 1 ORDER BY updated_at DESC')
-    .all() as NoteRow[];
-
-  return rows.map(toNote);
-};
+export const listDeletedNotes = (): Note[] =>
+  queryAll<NoteRow>('SELECT * FROM notes WHERE deleted = 1 ORDER BY updated_at DESC').map(toNote);
 
 export const deleteNote = (id: string): Note | null =>
   updateNote(id, { deleted: true, updatedAt: getTimestamp() });
 
-export const permanentlyDeleteNote = (id: string): boolean => {
-  const db = getDatabase();
-
-  return (
-    db.transaction(() => {
-      db.prepare('DELETE FROM revisions WHERE note_id = ?').run(id);
-      return db.prepare('DELETE FROM notes WHERE id = ?').run(id).changes > 0;
-    })()
-  );
-};
+export const permanentlyDeleteNote = (id: string): boolean =>
+  runInTransaction(() => {
+    execute('DELETE FROM revisions WHERE note_id = ?', [id], false);
+    return execute('DELETE FROM notes WHERE id = ?', [id], false) > 0;
+  });
 
 export const restoreNote = (id: string): Note | null =>
   updateNote(id, { deleted: false, updatedAt: getTimestamp() });
@@ -500,17 +599,19 @@ export const createFolder = (input: CreateFolderInput): Folder => {
     order: input.order ?? 0,
   };
 
-  getDatabase()
-    .prepare(
-      'INSERT INTO folders (id, name, parent_id, created_at, "order") VALUES (?, ?, ?, ?, ?)',
-    )
-    .run(folder.id, folder.name, folder.parentId, folder.createdAt, folder.order);
+  execute('INSERT INTO folders (id, name, parent_id, created_at, "order") VALUES (?, ?, ?, ?, ?)', [
+    folder.id,
+    folder.name,
+    folder.parentId,
+    folder.createdAt,
+    folder.order,
+  ]);
 
   return folder;
 };
 
 export const getFolder = (id: string): Folder | null => {
-  const row = getDatabase().prepare('SELECT * FROM folders WHERE id = ?').get(id) as FolderRow | undefined;
+  const row = queryOne<FolderRow>('SELECT * FROM folders WHERE id = ?', [id]);
   return row ? toFolder(row) : null;
 };
 
@@ -527,36 +628,33 @@ export const updateFolder = (id: string, updates: UpdateFolderInput): Folder | n
     parentId: updates.parentId === undefined ? existing.parentId : updates.parentId,
   };
 
-  getDatabase()
-    .prepare('UPDATE folders SET name = ?, parent_id = ?, "order" = ? WHERE id = ?')
-    .run(nextFolder.name, nextFolder.parentId, nextFolder.order, id);
+  execute('UPDATE folders SET name = ?, parent_id = ?, "order" = ? WHERE id = ?', [
+    nextFolder.name,
+    nextFolder.parentId,
+    nextFolder.order,
+    id,
+  ]);
 
   return getFolder(id);
 };
 
-export const listFolders = (): Folder[] => {
-  const rows = getDatabase()
-    .prepare('SELECT * FROM folders ORDER BY parent_id IS NOT NULL, "order" ASC, name COLLATE NOCASE ASC')
-    .all() as FolderRow[];
-
-  return rows.map(toFolder);
-};
+export const listFolders = (): Folder[] =>
+  queryAll<FolderRow>(
+    'SELECT * FROM folders ORDER BY parent_id IS NOT NULL, "order" ASC, name COLLATE NOCASE ASC',
+  ).map(toFolder);
 
 export const deleteFolder = (id: string): boolean => {
-  const db = getDatabase();
   const existing = getFolder(id);
 
   if (!existing) {
     return false;
   }
 
-  return (
-    db.transaction(() => {
-      db.prepare('UPDATE folders SET parent_id = ? WHERE parent_id = ?').run(existing.parentId, id);
-      db.prepare('UPDATE notes SET folder_id = NULL WHERE folder_id = ?').run(id);
-      return db.prepare('DELETE FROM folders WHERE id = ?').run(id).changes > 0;
-    })()
-  );
+  return runInTransaction(() => {
+    execute('UPDATE folders SET parent_id = ? WHERE parent_id = ?', [existing.parentId, id], false);
+    execute('UPDATE notes SET folder_id = NULL WHERE folder_id = ?', [id], false);
+    return execute('DELETE FROM folders WHERE id = ?', [id], false) > 0;
+  });
 };
 
 export const createWhiteboard = (input: CreateWhiteboardInput = {}): Whiteboard => {
@@ -572,13 +670,11 @@ export const createWhiteboard = (input: CreateWhiteboardInput = {}): Whiteboard 
     deleted: input.deleted ?? false,
   };
 
-  getDatabase()
-    .prepare(
-      `INSERT INTO whiteboards (
-        id, title, document, created_at, updated_at, pinned, favorite, deleted
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(
+  execute(
+    `INSERT INTO whiteboards (
+      id, title, document, created_at, updated_at, pinned, favorite, deleted
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
       whiteboard.id,
       whiteboard.title,
       serializeJson(whiteboard.document),
@@ -587,16 +683,14 @@ export const createWhiteboard = (input: CreateWhiteboardInput = {}): Whiteboard 
       Number(whiteboard.pinned),
       Number(whiteboard.favorite),
       Number(whiteboard.deleted),
-    );
+    ],
+  );
 
   return whiteboard;
 };
 
 export const getWhiteboard = (id: string): Whiteboard | null => {
-  const row = getDatabase()
-    .prepare('SELECT * FROM whiteboards WHERE id = ?')
-    .get(id) as WhiteboardRow | undefined;
-
+  const row = queryOne<WhiteboardRow>('SELECT * FROM whiteboards WHERE id = ?', [id]);
   return row ? toWhiteboard(row) : null;
 };
 
@@ -613,13 +707,11 @@ export const updateWhiteboard = (id: string, updates: UpdateWhiteboardInput): Wh
     updatedAt: updates.updatedAt ?? getTimestamp(),
   };
 
-  getDatabase()
-    .prepare(
-      `UPDATE whiteboards
-       SET title = ?, document = ?, updated_at = ?, pinned = ?, favorite = ?, deleted = ?
-       WHERE id = ?`,
-    )
-    .run(
+  execute(
+    `UPDATE whiteboards
+     SET title = ?, document = ?, updated_at = ?, pinned = ?, favorite = ?, deleted = ?
+     WHERE id = ?`,
+    [
       nextWhiteboard.title,
       serializeJson(nextWhiteboard.document),
       nextWhiteboard.updatedAt,
@@ -627,28 +719,25 @@ export const updateWhiteboard = (id: string, updates: UpdateWhiteboardInput): Wh
       Number(nextWhiteboard.favorite),
       Number(nextWhiteboard.deleted),
       id,
-    );
+    ],
+  );
 
   return getWhiteboard(id);
 };
 
-export const listWhiteboards = (includeDeleted = false): Whiteboard[] => {
-  const rows = getDatabase()
-    .prepare(
-      `SELECT * FROM whiteboards
-       WHERE ? = 1 OR deleted = 0
-       ORDER BY pinned DESC, favorite DESC, updated_at DESC`,
-    )
-    .all(Number(includeDeleted)) as WhiteboardRow[];
-
-  return rows.map(toWhiteboard);
-};
+export const listWhiteboards = (includeDeleted = false): Whiteboard[] =>
+  queryAll<WhiteboardRow>(
+    `SELECT * FROM whiteboards
+     WHERE ? = 1 OR deleted = 0
+     ORDER BY pinned DESC, favorite DESC, updated_at DESC`,
+    [Number(includeDeleted)],
+  ).map(toWhiteboard);
 
 export const deleteWhiteboard = (id: string): Whiteboard | null =>
   updateWhiteboard(id, { deleted: true, updatedAt: getTimestamp() });
 
 export const permanentlyDeleteWhiteboard = (id: string): boolean =>
-  getDatabase().prepare('DELETE FROM whiteboards WHERE id = ?').run(id).changes > 0;
+  execute('DELETE FROM whiteboards WHERE id = ?', [id]) > 0;
 
 export const restoreWhiteboard = (id: string): Whiteboard | null =>
   updateWhiteboard(id, { deleted: false, updatedAt: getTimestamp() });
@@ -670,7 +759,6 @@ export const duplicateWhiteboard = (id: string): Whiteboard | null => {
 };
 
 export const saveRevision = (input: SaveRevisionInput): Revision => {
-  const db = getDatabase();
   const revision: Revision = {
     id: input.id ?? randomUUID(),
     noteId: input.noteId,
@@ -679,18 +767,16 @@ export const saveRevision = (input: SaveRevisionInput): Revision => {
     timestamp: input.timestamp ?? getTimestamp(),
   };
 
-  db.transaction(() => {
-    db.prepare(
-      'INSERT INTO revisions (id, note_id, content, title, timestamp) VALUES (?, ?, ?, ?, ?)',
-    ).run(
+  runInTransaction(() => {
+    execute('INSERT INTO revisions (id, note_id, content, title, timestamp) VALUES (?, ?, ?, ?, ?)', [
       revision.id,
       revision.noteId,
       serializeJson(revision.content),
       revision.title,
       revision.timestamp,
-    );
+    ], false);
 
-    db.prepare(
+    execute(
       `DELETE FROM revisions
        WHERE note_id = ?
          AND id IN (
@@ -700,69 +786,67 @@ export const saveRevision = (input: SaveRevisionInput): Revision => {
            ORDER BY timestamp DESC
            LIMIT -1 OFFSET 20
          )`,
-    ).run(revision.noteId, revision.noteId);
-  })();
+      [revision.noteId, revision.noteId],
+      false,
+    );
+  });
 
   return revision;
 };
 
-export const listRevisionsByNoteId = (noteId: string): Revision[] => {
-  const rows = getDatabase()
-    .prepare('SELECT * FROM revisions WHERE note_id = ? ORDER BY timestamp DESC')
-    .all(noteId) as RevisionRow[];
-
-  return rows.map(toRevision);
-};
+export const listRevisionsByNoteId = (noteId: string): Revision[] =>
+  queryAll<RevisionRow>('SELECT * FROM revisions WHERE note_id = ? ORDER BY timestamp DESC', [noteId]).map(
+    toRevision,
+  );
 
 export const getRevision = (id: string): Revision | null => {
-  const row = getDatabase()
-    .prepare('SELECT * FROM revisions WHERE id = ?')
-    .get(id) as RevisionRow | undefined;
-
+  const row = queryOne<RevisionRow>('SELECT * FROM revisions WHERE id = ?', [id]);
   return row ? toRevision(row) : null;
 };
 
-const toBuffer = (data: SaveImageInput['data']): Buffer => {
+const toUint8Array = (data: SaveImageInput['data']): Uint8Array => {
   if (Buffer.isBuffer(data)) {
-    return data;
+    return new Uint8Array(data);
   }
 
   if (data instanceof Uint8Array) {
-    return Buffer.from(data);
+    return new Uint8Array(data);
   }
 
   if (data instanceof ArrayBuffer) {
-    return Buffer.from(data);
+    return new Uint8Array(data);
   }
 
-  return Buffer.from(data);
+  return Uint8Array.from(data);
 };
 
 export const saveImage = (input: SaveImageInput): ImageRecord => {
   const image: ImageRecord = {
     id: input.id ?? randomUUID(),
-    data: new Uint8Array(toBuffer(input.data)),
+    data: toUint8Array(input.data),
     mimeType: input.mimeType,
     createdAt: input.createdAt ?? getTimestamp(),
   };
 
-  getDatabase()
-    .prepare('INSERT OR REPLACE INTO images (id, data, mime_type, created_at) VALUES (?, ?, ?, ?)')
-    .run(image.id, Buffer.from(image.data), image.mimeType, image.createdAt);
+  execute('INSERT OR REPLACE INTO images (id, data, mime_type, created_at) VALUES (?, ?, ?, ?)', [
+    image.id,
+    image.data,
+    image.mimeType,
+    image.createdAt,
+  ]);
 
   return image;
 };
 
 export const getImage = (id: string): ImageRecord | null => {
-  const row = getDatabase().prepare('SELECT * FROM images WHERE id = ?').get(id) as ImageRow | undefined;
+  const row = queryOne<ImageRow>('SELECT * FROM images WHERE id = ?', [id]);
   return row ? toImageRecord(row) : null;
 };
 
-export const deleteImage = (id: string): boolean =>
-  getDatabase().prepare('DELETE FROM images WHERE id = ?').run(id).changes > 0;
+export const deleteImage = (id: string): boolean => execute('DELETE FROM images WHERE id = ?', [id]) > 0;
 
 export const getSetting = <T = unknown>(key: string): T | null => {
-  const row = getDatabase().prepare('SELECT * FROM settings WHERE key = ?').get(key) as SettingRow | undefined;
+  const row = queryOne<SettingRow>('SELECT * FROM settings WHERE key = ?', [key]);
 
   if (!row) {
     return null;
@@ -772,9 +856,10 @@ export const getSetting = <T = unknown>(key: string): T | null => {
 };
 
 export const setSetting = <T>(key: string, value: T): T => {
-  getDatabase()
-    .prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
-    .run(key, serializeJson(value));
+  execute('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', [
+    key,
+    serializeJson(value),
+  ]);
 
   return value;
 };

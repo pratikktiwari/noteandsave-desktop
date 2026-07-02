@@ -2,6 +2,7 @@ import { app, BrowserWindow, Menu, type MenuItemConstructorOptions } from 'elect
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 
+import { initDatabase } from './main/database';
 import { registerIpcHandlers } from './main/ipc-handlers';
 
 if (started) {
@@ -85,6 +86,7 @@ const createMainWindow = (): BrowserWindow => {
 
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     window.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+    window.webContents.openDevTools();
   } else {
     window.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   }
@@ -100,6 +102,12 @@ const createMainWindow = (): BrowserWindow => {
 
 const bootstrap = async (): Promise<void> => {
   await app.whenReady();
+
+  try {
+    await initDatabase();
+  } catch (err) {
+    console.error('Failed to initialize database:', err);
+  }
 
   app.setAboutPanelOptions({
     applicationName: 'NoteAndSave',
