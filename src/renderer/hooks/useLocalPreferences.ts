@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { getPreference, setPreference } from '../lib/storage';
 import type { SortOption } from '../types';
 
@@ -27,5 +27,21 @@ export function useLocalPreferences() {
     setPreference('sidebar-collapsed', collapsed);
   }, []);
 
-  return { getSortPreference, setSortPreference, getLastOpenedNote, setLastOpenedNote, getSidebarCollapsed, setSidebarCollapsed };
+  const [theme, setThemeState] = useState<'light' | 'dark'>(() => {
+    return getPreference<'light' | 'dark'>('theme', 'light');
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setThemeState((prev) => {
+      const next = prev === 'light' ? 'dark' : 'light';
+      setPreference('theme', next);
+      return next;
+    });
+  }, []);
+
+  return { getSortPreference, setSortPreference, getLastOpenedNote, setLastOpenedNote, getSidebarCollapsed, setSidebarCollapsed, theme, toggleTheme };
 }

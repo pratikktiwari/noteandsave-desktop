@@ -3,6 +3,7 @@ import { useWorkspace } from "../context/WorkspaceContext";
 import { useFolders } from "../hooks/useFolders";
 import { useNotes } from "../hooks/useNotes";
 import { useWhiteboards } from "../hooks/useWhiteboards";
+import { useLocalPreferences } from "../hooks/useLocalPreferences";
 import { Settings } from "./Settings";
 import type { SidebarView } from "../types";
 
@@ -22,9 +23,12 @@ export function Sidebar({
     useFolders();
   const { addNote, clearFolderFromNotes } = useNotes();
   const { addWhiteboard } = useWhiteboards();
+  const { toggleTheme } = useLocalPreferences();
   const [foldersOpen, setFoldersOpen] = React.useState(true);
   const [menuFolderId, setMenuFolderId] = React.useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
 
   React.useEffect(() => {
     loadFolders();
@@ -36,6 +40,9 @@ export function Sidebar({
     }
     dispatch({ type: "SET_SIDEBAR_VIEW", payload: view });
     dispatch({ type: "SET_ACTIVE_NOTE", payload: null });
+    if (view !== "whiteboards") {
+      dispatch({ type: "SET_ACTIVE_WHITEBOARD", payload: null });
+    }
   };
 
   const handleNewNote = () => addNote("note");
@@ -47,8 +54,16 @@ export function Sidebar({
   };
 
   const handleCreateFolder = async () => {
-    const name = window.prompt("Folder name");
-    if (!name?.trim()) return;
+    setCreatingFolder(true);
+    setNewFolderName('');
+    setFoldersOpen(true);
+  };
+
+  const handleSubmitNewFolder = async () => {
+    const name = newFolderName.trim();
+    setCreatingFolder(false);
+    setNewFolderName('');
+    if (!name) return;
 
     const folder = await addFolder(name);
     if (!folder) return;
@@ -62,24 +77,31 @@ export function Sidebar({
     dispatch({ type: "SET_SIDEBAR_VIEW", payload: "folder" });
   };
 
+  const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
+  const [renameFolderValue, setRenameFolderValue] = useState('');
+
   const handleRenameFolder = async (folderId: string) => {
     const folder = folders.find((item) => item.id === folderId);
     if (!folder) return;
-
-    const name = window.prompt("Rename folder", folder.name);
-    if (!name?.trim() || name.trim() === folder.name) return;
-
-    await renameFolder(folderId, name);
+    setRenamingFolderId(folderId);
+    setRenameFolderValue(folder.name);
     setMenuFolderId(null);
+  };
+
+  const handleSubmitRename = async () => {
+    const name = renameFolderValue.trim();
+    const folderId = renamingFolderId;
+    setRenamingFolderId(null);
+    setRenameFolderValue('');
+    if (!folderId || !name) return;
+    const folder = folders.find((item) => item.id === folderId);
+    if (!folder || name === folder.name) return;
+    await renameFolder(folderId, name);
   };
 
   const handleDeleteFolder = async (folderId: string) => {
     const folder = folders.find((item) => item.id === folderId);
-    if (
-      !folder ||
-      !window.confirm(`Delete "${folder.name}"? Notes will be kept.`)
-    )
-      return;
+    if (!folder) return;
 
     await clearFolderFromNotes(folderId);
     await removeFolder(folderId);
@@ -347,7 +369,24 @@ export function Sidebar({
 
         {foldersOpen && (
           <div className="ws-sidebar__folder-list">
-            {folders.length === 0 ? (
+            {creatingFolder && (
+              <div className="ws-sidebar__folder-item">
+                <input
+                  className="ws-sidebar__folder-input"
+                  type="text"
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSubmitNewFolder();
+                    if (e.key === 'Escape') { setCreatingFolder(false); setNewFolderName(''); }
+                  }}
+                  onBlur={handleSubmitNewFolder}
+                  placeholder="Folder name..."
+                  autoFocus
+                />
+              </div>
+            )}
+            {folders.length === 0 && !creatingFolder ? (
               <div className="ws-sidebar__folder-empty">No folders yet</div>
             ) : (
               folders.map((folder) => {
@@ -366,6 +405,20 @@ export function Sidebar({
                       );
                     }}
                   >
+                    {renamingFolderId === folder.id ? (
+                      <input
+                        className="ws-sidebar__folder-input"
+                        type="text"
+                        value={renameFolderValue}
+                        onChange={(e) => setRenameFolderValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSubmitRename();
+                          if (e.key === 'Escape') { setRenamingFolderId(null); setRenameFolderValue(''); }
+                        }}
+                        onBlur={handleSubmitRename}
+                        autoFocus
+                      />
+                    ) : (
                     <button
                       className="ws-sidebar__folder-button"
                       onClick={() => handleSelectFolder(folder.id)}
@@ -385,6 +438,7 @@ export function Sidebar({
                         {folder.name}
                       </span>
                     </button>
+                    )}
                     <div className="ws-sidebar__folder-actions">
                       <button
                         className="ws-sidebar__folder-menu-btn"
@@ -432,7 +486,7 @@ export function Sidebar({
       </div>
 
       <div className="ws-sidebar__footer">
-        <button className="theme-toggle" aria-label="Toggle theme">
+        <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme">
           <svg
             width="20"
             xmlns="http://www.w3.org/2000/svg"

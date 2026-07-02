@@ -299,6 +299,17 @@
   white-space: nowrap;
 }
 
+.ws-sidebar__folder-input {
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  border: 1px solid var(--ns-color-accent);
+  border-radius: 4px;
+  background: var(--ns-color-bg);
+  color: var(--ns-color-text);
+  outline: none;
+}
+
 .ws-sidebar__folder-actions {
   position: relative;
   padding-right: var(--ns-spacing-xs);
@@ -1159,6 +1170,10 @@
 
 .ws-editor__content .tiptap ul[data-type="taskList"] li > div {
   flex: 1;
+}
+
+.ws-editor__content .tiptap ul[data-type="taskList"] li > div p {
+  margin: 0;
 }
 
 .ws-editor__content
