@@ -1,0 +1,103 @@
+:root {
+  --ns-color-bg: #fffdfc;
+  --ns-color-bg-nav: #fffdf7;
+  --ns-color-bg-elevated: #ffffff;
+  --ns-color-bg-hover: #faf5ef;
+  --ns-color-text: #272320;
+  --ns-color-text-muted: #7a6a5a;
+  --ns-color-text-faint: #a99080;
+  --ns-color-hairline: #e5ddd0;
+  --ns-color-accent: #694111;
+  --ns-color-accent-bg: #f7ece5;
+  --ns-color-accent-bg-2: #f7ecd9;
+  --ns-color-backdrop-overlay: hsla(30, 10%, 20%, 0.5);
+  --ns-color-bg-inline-code: #f7ece5;
+  --ns-color-danger: #b42318;
+  --ns-font: Atkinson, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ns-text-2xs: 12px;
+  --ns-text-xs: 13px;
+  --ns-text-sm: 14px;
+  --ns-text-base: 17px;
+  --ns-text-code: 14px;
+  --ns-text-lg: 18px;
+  --ns-text-xl: 20px;
+  --ns-text-2xl: 24px;
+  --ns-text-3xl: 29px;
+  --ns-line-height: 1.75;
+  --ns-spacing-xs: 4px;
+  --ns-spacing-sm: 8px;
+  --ns-spacing-md: 16px;
+  --ns-spacing-lg: 24px;
+  --ns-spacing-xl: 32px;
+  --ns-spacing-2xl: 48px;
+  --ns-radius: 8px;
+  --ns-radius-sm: 4px;
+  --ns-radius-md: 12px;
+  --ns-shadow-card: 0 2px 8px rgba(105, 65, 17, 0.07);
+  --ns-shadow-md: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+:root[data-theme='dark'] {
+  --ns-color-bg: hsl(224, 10%, 10%);
+  --ns-color-bg-nav: hsl(224, 14%, 16%);
+  --ns-color-bg-elevated: hsl(224, 12%, 14%);
+  --ns-color-bg-hover: hsl(224, 10%, 18%);
+  --ns-color-text: hsl(224, 6%, 88%);
+  --ns-color-text-muted: hsl(224, 6%, 65%);
+  --ns-color-text-faint: hsl(224, 6%, 45%);
+  --ns-color-hairline: hsl(224, 10%, 22%);
+  --ns-color-accent: #e8a96a;
+  --ns-color-accent-bg: hsl(224, 10%, 16%);
+  --ns-color-accent-bg-2: hsl(224, 10%, 19%);
+  --ns-color-backdrop-overlay: hsla(224, 13%, 6%, 0.7);
+  --ns-color-bg-inline-code: hsl(224, 10%, 16%);
+  --ns-color-danger: #f97066;
+  --ns-shadow-card: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --ns-shadow-md: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  background: var(--ns-color-bg);
+  color: var(--ns-color-text);
+  font-family: var(--ns-font);
+  line-height: var(--ns-line-height);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+@font-face {
+  font-family: "Atkinson";
+  src: url("/fonts/atkinson-regular.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Atkinson";
+  src: url("/fonts/atkinson-bold.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
