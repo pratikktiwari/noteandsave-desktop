@@ -218,7 +218,11 @@ export function Editor() {
 
   const handleTitleSubmit = () => {
     if (currentNote && titleValue.trim() && titleValue !== currentNote.title) {
-      renameNote(currentNote.id, titleValue.trim());
+      const newTitle = titleValue.trim();
+      renameNote(currentNote.id, newTitle);
+      const updated = { ...currentNote, title: newTitle, updatedAt: Date.now() };
+      setCurrentNote(updated);
+      currentNoteRef.current = updated;
     }
     setIsEditingTitle(false);
   };
