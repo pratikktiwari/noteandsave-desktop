@@ -4,13 +4,14 @@ interface TagInputProps {
   tags: string[];
   allTags: string[];
   onChange: (tags: string[]) => void;
+  createdAt?: number;
 }
 
 function normalizeTag(tag: string) {
   return tag.trim();
 }
 
-export function TagInput({ tags, allTags, onChange }: TagInputProps) {
+export function TagInput({ tags, allTags, onChange, createdAt }: TagInputProps) {
   const [value, setValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
 
@@ -55,7 +56,19 @@ export function TagInput({ tags, allTags, onChange }: TagInputProps) {
 
   return (
     <div className="ws-tag-input">
-      <div className="ws-tag-input__label">Tags</div>
+      <div className="ws-tag-input__label-row">
+        <div className="ws-tag-input__label">Tags</div>
+        {createdAt && (
+          <div className="ws-tag-input__created-date">
+            {new Date(createdAt).toLocaleDateString(undefined, {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </div>
+        )}
+      </div>
       <div className="ws-tag-input__field">
         <div className="ws-tag-input__tags">
           {tags.map((tag) => (

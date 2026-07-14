@@ -369,18 +369,11 @@ export function Editor() {
             </div>
           </div>
         </div>
-        <div className="ws-editor__created-date">
-          {new Date(currentNote.createdAt).toLocaleDateString(undefined, {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}
-        </div>
         <TagInput
           tags={currentNote.tags}
           allTags={notes.flatMap((note) => note.tags)}
           onChange={handleTagsChange}
+          createdAt={currentNote.createdAt}
         />
         <Toolbar editor={editor} />
       </div>
