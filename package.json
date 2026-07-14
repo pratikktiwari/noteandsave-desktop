@@ -1,7 +1,7 @@
 {
   "name": "noteandsave-desktop",
   "productName": "Note & Save",
-  "version": "1.0.0",
+  "version": "1.0.4",
   "description": "A local-first desktop note-taking app with rich editor and whiteboards",
   "main": ".vite/build/main.js",
   "private": true,
