@@ -3,6 +3,8 @@ import type { Editor } from '@tiptap/react';
 
 interface ToolbarProps {
   editor: Editor | null;
+  spellCheck: boolean;
+  onToggleSpellCheck: () => void;
 }
 
 interface ToolbarButton {
@@ -12,7 +14,7 @@ interface ToolbarButton {
   isActive?: boolean;
 }
 
-export function Toolbar({ editor }: ToolbarProps) {
+export function Toolbar({ editor, spellCheck, onToggleSpellCheck }: ToolbarProps) {
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const linkInputRef = useRef<HTMLInputElement>(null);
@@ -282,6 +284,22 @@ export function Toolbar({ editor }: ToolbarProps) {
             {btn.icon}
           </button>
         ))}
+      </div>
+      <div className="ws-toolbar__separator" />
+      <div className="ws-toolbar__group">
+        <button
+          className={`ws-toolbar__btn ${spellCheck ? 'ws-toolbar__btn--active' : ''}`}
+          onClick={onToggleSpellCheck}
+          title={spellCheck ? 'Disable spell check' : 'Enable spell check'}
+          aria-label="Toggle spell check"
+          aria-pressed={spellCheck}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <text x="2" y="16" fontSize="12" fontWeight="bold" fill="currentColor" stroke="none">A</text>
+            <path d="M14 15l2 2 4-4" />
+            {!spellCheck && <line x1="2" y1="2" x2="22" y2="22" stroke="currentColor" strokeWidth="2" />}
+          </svg>
+        </button>
       </div>
       {showLinkInput && (
         <div className="ws-toolbar__link-input">
