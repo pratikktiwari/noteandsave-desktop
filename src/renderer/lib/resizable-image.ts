@@ -14,7 +14,7 @@ export const ResizableImageExtension = Image.extend({
         },
         renderHTML: (attributes) => {
           if (!attributes.width) return {};
-          return { width: attributes.width, style: `width: ${attributes.width}px` };
+          return { width: attributes.width };
         },
       },
     };

@@ -9,7 +9,7 @@ export function ResizableImage({ node, updateAttributes, selected }: NodeViewPro
   const startWidthRef = useRef(0);
 
   const handleMouseDown = useCallback(
-    (event: React.MouseEvent, _direction: 'left' | 'right') => {
+    (event: React.MouseEvent) => {
       event.preventDefault();
       event.stopPropagation();
       setIsResizing(true);
@@ -57,11 +57,11 @@ export function ResizableImage({ node, updateAttributes, selected }: NodeViewPro
           <>
             <div
               className="resizable-image__handle resizable-image__handle--left"
-              onMouseDown={(e) => handleMouseDown(e, 'left')}
+              onMouseDown={(e) => handleMouseDown(e)}
             />
             <div
               className="resizable-image__handle resizable-image__handle--right"
-              onMouseDown={(e) => handleMouseDown(e, 'right')}
+              onMouseDown={(e) => handleMouseDown(e)}
             />
           </>
         )}
