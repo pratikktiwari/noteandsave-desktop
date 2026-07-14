@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { Editor } from '@tiptap/react';
 
 interface ToolbarProps {
@@ -13,7 +13,40 @@ interface ToolbarButton {
 }
 
 export function Toolbar({ editor }: ToolbarProps) {
+  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const linkInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (showLinkInput && linkInputRef.current) {
+      linkInputRef.current.focus();
+    }
+  }, [showLinkInput]);
+
   if (!editor) return null;
+
+  const applyLink = () => {
+    if (linkUrl) {
+      try {
+        const resolvedUrl = linkUrl.match(/^https?:\/\/|^mailto:/i) ? linkUrl : `https://${linkUrl}`;
+        const parsed = new URL(resolvedUrl);
+        const allowedProtocols = ['http:', 'https:', 'mailto:'];
+        if (allowedProtocols.includes(parsed.protocol)) {
+          editor.chain().focus().setLink({ href: resolvedUrl }).run();
+        }
+      } catch {
+        // Invalid URL, do nothing
+      }
+    }
+    setShowLinkInput(false);
+    setLinkUrl('');
+  };
+
+  const cancelLink = () => {
+    setShowLinkInput(false);
+    setLinkUrl('');
+    editor.commands.focus();
+  };
 
   const buttons: ToolbarButton[] = [
     {
@@ -165,9 +198,11 @@ export function Toolbar({ editor }: ToolbarProps) {
         </svg>
       ),
       action: () => {
-        const url = window.prompt('Enter URL:');
-        if (url) {
-          editor.chain().focus().setLink({ href: url }).run();
+        if (editor.isActive('link')) {
+          editor.chain().focus().unsetLink().run();
+        } else {
+          setLinkUrl('');
+          setShowLinkInput(true);
         }
       },
       isActive: editor.isActive('link'),
@@ -248,6 +283,37 @@ export function Toolbar({ editor }: ToolbarProps) {
           </button>
         ))}
       </div>
+      {showLinkInput && (
+        <div className="ws-toolbar__link-input">
+          <input
+            ref={linkInputRef}
+            type="url"
+            placeholder="Enter URL..."
+            value={linkUrl}
+            onChange={(e) => setLinkUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                applyLink();
+              } else if (e.key === 'Escape') {
+                cancelLink();
+              }
+            }}
+          />
+          <button
+            className="ws-toolbar__link-input-btn"
+            onClick={applyLink}
+          >
+            Apply
+          </button>
+          <button
+            className="ws-toolbar__link-input-btn ws-toolbar__link-input-btn--cancel"
+            onClick={cancelLink}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
     </div>
   );
 }
