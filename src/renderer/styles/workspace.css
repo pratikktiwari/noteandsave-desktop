@@ -1354,6 +1354,73 @@
   color: var(--ns-color-text-muted);
 }
 
+/* --- Note Link --- */
+
+.ws-note-link {
+  color: var(--ns-color-accent, #6366f1);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--ns-color-accent, #6366f1);
+  cursor: pointer;
+  padding: 0 2px;
+  border-radius: 2px;
+  transition: background 0.15s;
+}
+
+.ws-note-link:hover {
+  background: color-mix(in srgb, var(--ns-color-accent, #6366f1) 10%, transparent);
+}
+
+/* --- Note Link Suggestion Menu --- */
+
+.ws-note-link-menu {
+  background: var(--ns-color-bg);
+  border: 1px solid var(--ns-color-hairline);
+  border-radius: var(--ns-radius-md);
+  box-shadow: var(--ns-shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.15));
+  padding: var(--ns-spacing-xs);
+  min-width: 200px;
+  max-width: 320px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.ws-note-link-menu__empty {
+  padding: var(--ns-spacing-sm) var(--ns-spacing-md);
+  font-size: var(--ns-text-sm);
+  color: var(--ns-color-text-muted);
+}
+
+.ws-note-link-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--ns-spacing-sm);
+  width: 100%;
+  padding: var(--ns-spacing-sm) var(--ns-spacing-md);
+  border: none;
+  background: transparent;
+  border-radius: var(--ns-radius-sm);
+  cursor: pointer;
+  text-align: left;
+  color: var(--ns-color-text);
+  font-size: var(--ns-text-sm);
+}
+
+.ws-note-link-menu__item:hover,
+.ws-note-link-menu__item--active {
+  background: var(--ns-color-bg-hover, rgba(0, 0, 0, 0.04));
+}
+
+.ws-note-link-menu__icon {
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.ws-note-link-menu__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* --- Mobile Hamburger & Backdrop --- */
 
 .ws-mobile-hamburger {
