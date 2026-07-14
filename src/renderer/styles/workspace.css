@@ -574,7 +574,7 @@
   cursor: pointer;
   transition: background 0.15s ease;
   border: 1px solid transparent;
-  margin-bottom: 2px;
+  margin: 2px 0;
 }
 
 .ws-note-card:hover {
