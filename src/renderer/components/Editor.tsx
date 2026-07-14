@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useEditor, EditorContent, type JSONContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TaskList from '@tiptap/extension-task-list';
@@ -23,6 +23,8 @@ import { Toolbar } from './Toolbar';
 import { TagInput } from './TagInput';
 import { RevisionHistory } from './RevisionHistory';
 import { SlashCommandExtension } from '../lib/slash-command';
+import { NoteLink } from '../lib/note-link';
+import { NoteLinkSuggestionExtension } from '../lib/note-link-suggestion';
 import {
   exportToHTML,
   exportToMarkdown,
@@ -47,6 +49,10 @@ export function Editor() {
   const [showExport, setShowExport] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [spellCheck, setSpellCheck] = useState(true);
+
+  const handleNoteLinkClick = useCallback((noteId: string) => {
+    dispatch({ type: 'SET_ACTIVE_NOTE', payload: noteId });
+  }, [dispatch]);
 
   // Find active note — check state first, fall back to IndexedDB
   const prevNoteIdRef = useRef<string | null>(null);
@@ -142,6 +148,22 @@ export function Editor() {
         lowlight,
       }),
       SlashCommandExtension,
+      NoteLink.configure({
+        onNoteLinkClick: handleNoteLinkClick,
+      }),
+      NoteLinkSuggestionExtension.configure({
+        suggestion: {
+          char: '[[',
+          allowSpaces: true,
+          items: ({ query }: { query: string }) => {
+            return notes
+              .filter((n) => !n.deleted && n.id !== currentNoteRef.current?.id)
+              .filter((n) => n.title.toLowerCase().includes(query.toLowerCase()))
+              .slice(0, 10)
+              .map((n) => ({ id: n.id, title: n.title }));
+          },
+        },
+      }),
     ],
     content: currentNote?.content || { type: 'doc', content: [{ type: 'paragraph' }] },
     editorProps: {
