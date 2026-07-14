@@ -872,6 +872,13 @@
   background: var(--ns-color-accent-bg);
 }
 
+.ws-editor__created-date {
+  font-size: var(--ns-text-xs);
+  color: var(--ns-color-text-muted);
+  padding: 0 var(--ns-spacing-lg);
+  margin-bottom: var(--ns-spacing-xs);
+}
+
 .ws-editor__content {
   flex: 1;
   overflow-y: auto;
