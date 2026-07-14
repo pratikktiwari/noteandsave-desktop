@@ -6,7 +6,7 @@ import TaskItem from '@tiptap/extension-task-item';
 import Highlight from '@tiptap/extension-highlight';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
-import Image from '@tiptap/extension-image';
+import { ResizableImageExtension } from '../lib/resizable-image';
 import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
@@ -131,7 +131,7 @@ export function Editor() {
           target: '_blank',
         },
       }),
-      Image.configure({
+      ResizableImageExtension.configure({
         inline: false,
         allowBase64: true,
       }),
