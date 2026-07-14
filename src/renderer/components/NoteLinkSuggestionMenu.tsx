@@ -16,6 +16,7 @@ export const NoteLinkSuggestionMenu = forwardRef<any, NoteLinkSuggestionMenuProp
 
     useImperativeHandle(ref, () => ({
       onKeyDown: ({ event }: { event: KeyboardEvent }) => {
+        if (items.length === 0) return false;
         if (event.key === 'ArrowUp') {
           setSelectedIndex((prev) => (prev + items.length - 1) % items.length);
           return true;
