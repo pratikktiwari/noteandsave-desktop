@@ -1068,6 +1068,48 @@
   color: var(--ns-color-accent);
 }
 
+.ws-toolbar__link-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-top: 1px solid var(--ns-color-border, #e0e0e0);
+  width: 100%;
+}
+
+.ws-toolbar__link-input input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--ns-color-border, #ccc);
+  border-radius: 4px;
+  font-size: 13px;
+  outline: none;
+  background: var(--ns-color-surface, #fff);
+  color: var(--ns-color-text, #333);
+}
+
+.ws-toolbar__link-input input:focus {
+  border-color: var(--ns-color-accent, #4a9eff);
+}
+
+.ws-toolbar__link-input-btn {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  background: var(--ns-color-accent, #4a9eff);
+  color: #fff;
+}
+
+.ws-toolbar__link-input-btn:hover {
+  opacity: 0.9;
+}
+
+.ws-toolbar__link-input-btn--cancel {
+  background: var(--ns-color-muted, #888);
+}
+
 /* --- TipTap Editor Styles --- */
 
 .ws-editor__content .tiptap {
