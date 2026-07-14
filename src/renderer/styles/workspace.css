@@ -934,12 +934,23 @@
   margin-bottom: var(--ns-spacing-md);
 }
 
+.ws-tag-input__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--ns-spacing-xs);
+}
+
 .ws-tag-input__label {
   font-size: var(--ns-text-2xs);
   color: var(--ns-color-text-faint);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  margin-bottom: var(--ns-spacing-xs);
+}
+
+.ws-tag-input__created-date {
+  font-size: var(--ns-text-xs);
+  color: var(--ns-color-text-muted);
 }
 
 .ws-tag-input__field {

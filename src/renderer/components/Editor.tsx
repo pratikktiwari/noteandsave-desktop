@@ -373,6 +373,7 @@ export function Editor() {
           tags={currentNote.tags}
           allTags={notes.flatMap((note) => note.tags)}
           onChange={handleTagsChange}
+          createdAt={currentNote.createdAt}
         />
         <Toolbar editor={editor} />
       </div>
