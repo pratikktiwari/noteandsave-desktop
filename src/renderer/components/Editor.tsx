@@ -208,13 +208,7 @@ export function Editor() {
   // Sync spellcheck attribute when toggle changes
   useEffect(() => {
     if (!editor) return;
-    editor.setOptions({
-      editorProps: {
-        attributes: {
-          spellcheck: spellCheck ? 'true' : 'false',
-        },
-      },
-    });
+    editor.view.dom.setAttribute('spellcheck', spellCheck ? 'true' : 'false');
   }, [editor, spellCheck]);
 
   const handleRestoreRevision = (revision: Revision) => {
