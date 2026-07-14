@@ -46,6 +46,7 @@ export function Editor() {
   const titleInputRef = useRef<HTMLInputElement>(null);
   const [showExport, setShowExport] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [spellCheck, setSpellCheck] = useState(true);
 
   // Find active note — check state first, fall back to IndexedDB
   const prevNoteIdRef = useRef<string | null>(null);
@@ -144,6 +145,9 @@ export function Editor() {
     ],
     content: currentNote?.content || { type: 'doc', content: [{ type: 'paragraph' }] },
     editorProps: {
+      attributes: {
+        spellcheck: spellCheck ? 'true' : 'false',
+      },
       handleDrop: (view, event, _slice, moved) => {
         if (!moved && event.dataTransfer?.files?.length) {
           const files = Array.from(event.dataTransfer.files).filter((f) => f.type.startsWith('image/'));
@@ -200,6 +204,12 @@ export function Editor() {
     editor.commands.setContent(currentNote.content || { type: 'doc', content: [{ type: 'paragraph' }] });
     isSettingContentRef.current = false;
   }, [editor, currentNote]);
+
+  // Sync spellcheck attribute when toggle changes
+  useEffect(() => {
+    if (!editor) return;
+    editor.view.dom.setAttribute('spellcheck', spellCheck ? 'true' : 'false');
+  }, [editor, spellCheck]);
 
   const handleRestoreRevision = (revision: Revision) => {
     if (!currentNote || !editor) return;
@@ -375,7 +385,7 @@ export function Editor() {
           onChange={handleTagsChange}
           createdAt={currentNote.createdAt}
         />
-        <Toolbar editor={editor} />
+        <Toolbar editor={editor} spellCheck={spellCheck} onToggleSpellCheck={() => setSpellCheck((v) => !v)} />
       </div>
       <div className="ws-editor__content">
         <EditorContent editor={editor} />
