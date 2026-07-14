@@ -106,6 +106,16 @@
   background: var(--ns-color-accent);
 }
 
+:root[data-theme='dark'] .ws-sidebar__btn--primary {
+  background: var(--ns-color-accent-dark);
+  border-color: var(--ns-color-accent-dark);
+}
+
+:root[data-theme='dark'] .ws-sidebar__btn--primary:hover {
+  background: var(--ns-color-accent-dark-hover);
+  border-color: var(--ns-color-accent-dark-hover);
+}
+
 .ws-sidebar__nav {
   padding: var(--ns-spacing-sm) var(--ns-spacing-md);
   display: flex;

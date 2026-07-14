@@ -47,6 +47,8 @@
   --ns-color-text-faint: hsl(224, 6%, 45%);
   --ns-color-hairline: hsl(224, 10%, 22%);
   --ns-color-accent: #e8a96a;
+  --ns-color-accent-dark: #b87a3d;
+  --ns-color-accent-dark-hover: #a56c33;
   --ns-color-accent-bg: hsl(224, 10%, 16%);
   --ns-color-accent-bg-2: hsl(224, 10%, 19%);
   --ns-color-backdrop-overlay: hsla(224, 13%, 6%, 0.7);
