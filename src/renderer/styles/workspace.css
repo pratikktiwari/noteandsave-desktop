@@ -603,6 +603,11 @@
   gap: 4px;
   line-height: 1.3;
   overflow: hidden;
+  min-width: 0;
+}
+
+.ws-note-card__title-text {
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
