@@ -143,8 +143,8 @@ function parseInline(text: string): JSONContent[] {
   const tokens: JSONContent[] = [];
   if (!text) return tokens;
 
-  // Regex for inline patterns: images, links, bold, italic, strikethrough, inline code
-  const inlineRegex = /!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`|\*\*(.+?)\*\*|__(.+?)__|\*(.+?)\*|_(.+?)_|~~(.+?)~~/g;
+  // Regex for inline patterns: images, links, bold (**), bold (__), inline code, italic (*), italic (_), strikethrough
+  const inlineRegex = /!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`|\*\*(.+?)\*\*|__(.+?)__(?![a-zA-Z0-9])|(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)|(?<!_)_(?!_)(.+?)(?<!_)_(?![a-zA-Z0-9])|~~(.+?)~~/g;
 
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -155,8 +155,8 @@ function parseInline(text: string): JSONContent[] {
       tokens.push({ type: 'text', text: text.slice(lastIndex, match.index) });
     }
 
-    if (match[1] !== undefined || match[2] !== undefined) {
-      // Image: ![alt](src)
+    if (match[1] !== undefined && match[2] !== undefined) {
+      // Image: ![alt](src) — skip inserting as a standalone node in inline context, use link
       tokens.push({
         type: 'text',
         text: match[1] || 'image',
