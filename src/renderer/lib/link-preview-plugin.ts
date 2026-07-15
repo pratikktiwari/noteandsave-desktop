@@ -3,6 +3,9 @@ import { EditorView } from '@tiptap/pm/view';
 
 const linkPreviewPluginKey = new PluginKey('linkPreview');
 
+const TOOLTIP_OFFSET_Y = 4;
+const HIDE_DELAY_MS = 150;
+
 /**
  * A ProseMirror plugin that shows a tooltip with the target URL
  * when the user hovers over a hyperlink in the editor.
@@ -11,11 +14,13 @@ export function linkPreviewPlugin(): Plugin {
   let tooltipEl: HTMLDivElement | null = null;
   let hideTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  function createTooltip(view: EditorView): HTMLDivElement {
+  function createTooltip(view: EditorView): HTMLDivElement | null {
+    const parent = view.dom.parentElement;
+    if (!parent) return null;
     const el = document.createElement('div');
     el.className = 'ws-link-preview-tooltip';
     el.style.display = 'none';
-    view.dom.parentElement?.appendChild(el);
+    parent.appendChild(el);
     return el;
   }
 
@@ -38,7 +43,7 @@ export function linkPreviewPlugin(): Plugin {
     const parentRect = view.dom.parentElement?.getBoundingClientRect();
     if (!parentRect) return;
 
-    const top = linkRect.bottom - parentRect.top + 4;
+    const top = linkRect.bottom - parentRect.top + TOOLTIP_OFFSET_Y;
     const left = linkRect.left - parentRect.left;
 
     tooltip.style.top = `${top}px`;
@@ -48,7 +53,7 @@ export function linkPreviewPlugin(): Plugin {
   function hideTooltip(tooltip: HTMLDivElement) {
     hideTimeout = setTimeout(() => {
       tooltip.style.display = 'none';
-    }, 150);
+    }, HIDE_DELAY_MS);
   }
 
   return new Plugin({
