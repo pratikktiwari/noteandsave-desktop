@@ -34,6 +34,7 @@ import {
   exportToJSON,
   downloadFile,
 } from '../lib/export';
+import { markdownToJSON } from '../lib/import-markdown';
 import type { Note } from '../types';
 
 const lowlight = createLowlight(common);
@@ -56,8 +57,11 @@ export function Editor() {
   const [titleValue, setTitleValue] = useState('');
   const titleInputRef = useRef<HTMLInputElement>(null);
   const [showExport, setShowExport] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [spellCheck, setSpellCheck] = useState(true);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   const handleNoteLinkClick = useCallback((noteId: string) => {
     dispatch({ type: 'SET_ACTIVE_NOTE', payload: noteId });
@@ -104,6 +108,8 @@ export function Editor() {
 
   useEffect(() => {
     setShowExport(false);
+    setShowImport(false);
+    setImportText('');
     setShowHistory(false);
   }, [state.activeNoteId]);
 
@@ -319,6 +325,35 @@ export function Editor() {
     setShowExport(false);
   };
 
+  const handleImportMarkdown = (markdown: string) => {
+    if (!editor || !currentNote || !markdown.trim()) return;
+    const content = markdownToJSON(markdown);
+    editor.commands.setContent(content);
+    const updated: Note = {
+      ...currentNote,
+      content,
+      updatedAt: Date.now(),
+    };
+    setCurrentNote(updated);
+    dispatch({ type: 'UPDATE_NOTE', payload: updated });
+    debouncedSave();
+    setShowImport(false);
+    setImportText('');
+  };
+
+  const handleImportFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result as string;
+      handleImportMarkdown(text);
+    };
+    reader.readAsText(file);
+    // Reset file input so same file can be re-imported
+    event.target.value = '';
+  };
+
   if (!currentNote) {
     return (
       <div className="ws-editor ws-editor--empty">
@@ -386,6 +421,7 @@ export function Editor() {
               onClick={() => {
                 setShowHistory(true);
                 setShowExport(false);
+                setShowImport(false);
               }}
               aria-label="Open revision history"
               title="History"
@@ -396,13 +432,81 @@ export function Editor() {
                 <path d="M12 7v5l3 3" />
               </svg>
             </button>
+            <div className="ws-editor__import-wrapper">
+              <button
+                className="ws-editor__import-btn"
+                onClick={() => {
+                  setShowImport((value) => {
+                    const nextValue = !value;
+                    if (nextValue) { setShowExport(false); setShowHistory(false); }
+                    return nextValue;
+                  });
+                }}
+                aria-label="Import from markdown"
+                title="Import Markdown"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+              </button>
+              {showImport && (
+                <div className="ws-editor__import-modal">
+                  <div className="ws-editor__import-modal-header">
+                    <span>Import Markdown</span>
+                    <button
+                      className="ws-editor__import-modal-close"
+                      onClick={() => { setShowImport(false); setImportText(''); }}
+                      aria-label="Close import"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="ws-editor__import-modal-body">
+                    <button
+                      className="ws-editor__import-file-btn"
+                      onClick={() => importFileRef.current?.click()}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                      </svg>
+                      Select .md file
+                    </button>
+                    <input
+                      ref={importFileRef}
+                      type="file"
+                      accept=".md,.markdown,.txt"
+                      style={{ display: 'none' }}
+                      onChange={handleImportFile}
+                    />
+                    <div className="ws-editor__import-divider">or paste markdown below</div>
+                    <textarea
+                      className="ws-editor__import-textarea"
+                      value={importText}
+                      onChange={(e) => setImportText(e.target.value)}
+                      placeholder="Paste your markdown here..."
+                      rows={8}
+                    />
+                    <button
+                      className="ws-editor__import-submit-btn"
+                      onClick={() => handleImportMarkdown(importText)}
+                      disabled={!importText.trim()}
+                    >
+                      Import
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="ws-editor__export-wrapper">
               <button
                 className="ws-editor__export-btn"
                 onClick={() => {
                   setShowExport((value) => {
                     const nextValue = !value;
-                    if (nextValue) setShowHistory(false);
+                    if (nextValue) { setShowHistory(false); setShowImport(false); }
                     return nextValue;
                   });
                 }}
