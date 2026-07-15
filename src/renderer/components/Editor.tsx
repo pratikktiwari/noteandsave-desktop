@@ -180,6 +180,21 @@ export function Editor() {
       attributes: {
         spellcheck: spellCheck ? 'true' : 'false',
       },
+      transformPastedHTML(html) {
+        // When pasting a single paragraph from the editor, the clipboard contains
+        // a block-level <p> wrapper which TipTap inserts as a new block, creating
+        // extra empty lines above and below. Strip the wrapper to paste inline.
+        const trimmed = html.trim();
+        // Only unwrap if there's exactly one <p> tag (no multiple paragraphs)
+        const pTagCount = (trimmed.match(/<p[\s>]/gi) || []).length;
+        if (pTagCount === 1) {
+          const singleParagraphMatch = trimmed.match(/^<p[^>]*>([\s\S]*?)<\/p>$/i);
+          if (singleParagraphMatch) {
+            return singleParagraphMatch[1];
+          }
+        }
+        return html;
+      },
       handleDrop: (view, event, _slice, moved) => {
         if (!moved && event.dataTransfer?.files?.length) {
           const files = Array.from(event.dataTransfer.files).filter((f) => f.type.startsWith('image/'));
