@@ -14,7 +14,9 @@ import { TableHeader } from '@tiptap/extension-table-header';
 import Placeholder from '@tiptap/extension-placeholder';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { common, createLowlight } from 'lowlight';
+import { Extension } from '@tiptap/core';
 import { nanoid } from 'nanoid';
+import { linkPreviewPlugin } from '../lib/link-preview-plugin';
 import { saveImage, getNote as getDBNote, updateNote, type Revision } from '../lib/db';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { useAutosave } from '../hooks/useAutosave';
@@ -35,6 +37,13 @@ import {
 import type { Note } from '../types';
 
 const lowlight = createLowlight(common);
+
+const LinkPreviewExtension = Extension.create({
+  name: 'linkPreview',
+  addProseMirrorPlugins() {
+    return [linkPreviewPlugin()];
+  },
+});
 
 export function Editor() {
   const { state, dispatch } = useWorkspace();
@@ -164,6 +173,7 @@ export function Editor() {
           },
         },
       }),
+      LinkPreviewExtension,
     ],
     content: currentNote?.content || { type: 'doc', content: [{ type: 'paragraph' }] },
     editorProps: {

@@ -881,6 +881,7 @@
   flex: 1;
   overflow-y: auto;
   padding: var(--ns-spacing-lg) var(--ns-spacing-lg);
+  position: relative;
 }
 
 /* --- Tags --- */
@@ -1166,6 +1167,26 @@
 .ws-editor__content .tiptap a {
   color: var(--ns-color-accent);
   cursor: pointer;
+}
+
+/* --- Link Preview Tooltip --- */
+
+.ws-link-preview-tooltip {
+  position: absolute;
+  z-index: 100;
+  max-width: 360px;
+  padding: 4px 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ns-color-text-muted);
+  background: var(--ns-color-bg-card, var(--ns-color-bg));
+  border: 1px solid var(--ns-color-hairline);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
 }
 
 .ws-editor__content .tiptap blockquote {
