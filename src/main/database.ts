@@ -444,9 +444,9 @@ export const initDatabase = async (): Promise<void> => {
   }
 
   databaseInitialization = (async () => {
-    // Load WASM binary directly for reliable resolution in packaged app
+    // Load WASM binary from build output (copied by vite-plugin-static-copy)
     const appRoot = app.getAppPath();
-    const wasmPath = path.join(appRoot, 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm');
+    const wasmPath = path.join(appRoot, '.vite', 'build', 'sql-wasm.wasm');
 
     const wasmBinary = fs.readFileSync(wasmPath);
     const SQL = await initSqlJs({ wasmBinary });

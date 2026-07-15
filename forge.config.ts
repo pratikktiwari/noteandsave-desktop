@@ -10,17 +10,14 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 
 const config: ForgeConfig = {
   packagerConfig: {
-    // Disable asar to simplify runtime access to the sql.js WASM asset in node_modules
-    asar: false,
+    asar: true,
     icon: './assets/icon',
     executableName: 'noteandsave-desktop',
     ignore: (file: string) => {
       if (!file) return false;
       if (file.startsWith('/.vite')) return false;
       if (file === '/package.json') return false;
-      // Allow traversal into node_modules, but only include sql.js
-      if (file === '/node_modules') return false;
-      if (file.startsWith('/node_modules/sql.js')) return false;
+      // node_modules no longer needed – sql-wasm.wasm is copied into the build output
       return true;
     },
   },
