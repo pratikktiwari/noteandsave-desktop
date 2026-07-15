@@ -877,6 +877,136 @@
   background: var(--ns-color-accent-bg);
 }
 
+.ws-editor__import-wrapper {
+  position: relative;
+}
+
+.ws-editor__import-btn {
+  background: none;
+  border: 1px solid var(--ns-color-hairline);
+  border-radius: var(--ns-radius-sm);
+  cursor: pointer;
+  padding: var(--ns-spacing-xs) var(--ns-spacing-sm);
+  color: var(--ns-color-text-muted);
+  display: flex;
+  align-items: center;
+  transition: all 0.15s ease;
+}
+
+.ws-editor__import-btn:hover {
+  border-color: var(--ns-color-accent);
+  color: var(--ns-color-accent);
+}
+
+.ws-editor__import-modal {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  background: var(--ns-color-bg);
+  border: 1px solid var(--ns-color-hairline);
+  border-radius: var(--ns-radius-sm);
+  box-shadow: var(--ns-shadow-card);
+  z-index: 50;
+  min-width: 320px;
+  padding: var(--ns-spacing-md);
+}
+
+.ws-editor__import-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--ns-spacing-sm);
+  font-weight: 600;
+  font-size: var(--ns-text-sm);
+  color: var(--ns-color-text);
+}
+
+.ws-editor__import-modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: var(--ns-color-text-muted);
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.ws-editor__import-modal-close:hover {
+  color: var(--ns-color-text);
+}
+
+.ws-editor__import-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ns-spacing-sm);
+}
+
+.ws-editor__import-file-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--ns-spacing-xs);
+  padding: var(--ns-spacing-sm) var(--ns-spacing-md);
+  border: 1px dashed var(--ns-color-hairline);
+  border-radius: var(--ns-radius-sm);
+  background: none;
+  cursor: pointer;
+  font-size: var(--ns-text-sm);
+  color: var(--ns-color-text-muted);
+  transition: all 0.15s ease;
+}
+
+.ws-editor__import-file-btn:hover {
+  border-color: var(--ns-color-accent);
+  color: var(--ns-color-accent);
+}
+
+.ws-editor__import-divider {
+  text-align: center;
+  font-size: var(--ns-text-xs);
+  color: var(--ns-color-text-muted);
+  padding: var(--ns-spacing-xs) 0;
+}
+
+.ws-editor__import-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: var(--ns-spacing-sm);
+  border: 1px solid var(--ns-color-hairline);
+  border-radius: var(--ns-radius-sm);
+  background: var(--ns-color-bg);
+  color: var(--ns-color-text);
+  font-family: monospace;
+  font-size: var(--ns-text-sm);
+  resize: vertical;
+}
+
+.ws-editor__import-textarea:focus {
+  outline: none;
+  border-color: var(--ns-color-accent);
+}
+
+.ws-editor__import-submit-btn {
+  padding: var(--ns-spacing-sm) var(--ns-spacing-md);
+  background: var(--ns-color-accent);
+  color: white;
+  border: none;
+  border-radius: var(--ns-radius-sm);
+  cursor: pointer;
+  font-size: var(--ns-text-sm);
+  font-weight: 500;
+  transition: opacity 0.15s ease;
+}
+
+.ws-editor__import-submit-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.ws-editor__import-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .ws-editor__content {
   flex: 1;
   overflow-y: auto;
