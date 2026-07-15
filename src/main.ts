@@ -6,6 +6,9 @@ import { initDatabase } from './main/database';
 import { registerIpcHandlers } from './main/ipc-handlers';
 
 if (started) {
+  // During Squirrel install/update/uninstall events the process must exit
+  // immediately. Do not create any windows or run bootstrap() so users
+  // never see a blank white page during reinstallation.
   app.quit();
 }
 
@@ -125,7 +128,9 @@ const bootstrap = async (): Promise<void> => {
   });
 };
 
-void bootstrap();
+if (!started) {
+  void bootstrap();
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
