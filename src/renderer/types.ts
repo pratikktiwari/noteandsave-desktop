@@ -58,6 +58,7 @@ export interface WorkspaceState {
   sortBy: SortOption;
   isLoading: boolean;
   saveStatus: 'idle' | 'saving' | 'saved';
+  viewMode: 'list' | 'grid';
 }
 
 export type WorkspaceAction =
@@ -73,6 +74,7 @@ export type WorkspaceAction =
   | { type: 'SET_SORT_BY'; payload: SortOption }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_SAVE_STATUS'; payload: 'idle' | 'saving' | 'saved' }
+  | { type: 'SET_VIEW_MODE'; payload: 'list' | 'grid' }
   | { type: 'UPDATE_NOTE'; payload: Note }
   | { type: 'ADD_NOTE'; payload: Note }
   | { type: 'REMOVE_NOTE'; payload: string }

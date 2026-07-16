@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, shell, type MenuItemConstructorOptions } from 'electron';
+import { app, BrowserWindow, Menu, shell, session, type MenuItemConstructorOptions } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 
@@ -135,6 +135,22 @@ const bootstrap = async (): Promise<void> => {
 
   registerIpcHandlers();
   createMenu();
+
+  // Set Content-Security-Policy header for all responses
+  const isDev = !!MAIN_WINDOW_VITE_DEV_SERVER_URL;
+  const csp = isDev
+    ? "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws://localhost:*;"
+    : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:;";
+
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [csp],
+      },
+    });
+  });
+
   mainWindow = createMainWindow();
 
   app.on('activate', () => {

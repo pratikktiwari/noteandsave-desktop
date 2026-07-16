@@ -14,6 +14,7 @@ const initialState: WorkspaceState = {
   sortBy: 'updatedAt',
   isLoading: true,
   saveStatus: 'idle',
+  viewMode: 'list',
 };
 
 function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): WorkspaceState {
@@ -42,6 +43,8 @@ function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): Works
       return { ...state, isLoading: action.payload };
     case 'SET_SAVE_STATUS':
       return { ...state, saveStatus: action.payload };
+    case 'SET_VIEW_MODE':
+      return { ...state, viewMode: action.payload };
     case 'UPDATE_NOTE':
       return { ...state, notes: state.notes.map((n) => n.id === action.payload.id ? action.payload : n) };
     case 'ADD_NOTE':

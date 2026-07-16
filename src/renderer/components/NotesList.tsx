@@ -2,8 +2,10 @@ import React from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { useNotes } from '../hooks/useNotes';
 import { filterNotes, useSearch } from '../hooks/useSearch';
+import { useLocalPreferences } from '../hooks/useLocalPreferences';
 import { Search } from './Search';
 import { NoteCard } from './NoteCard';
+import { NotesGrid } from './NotesGrid';
 
 function collectTags(tags: string[]) {
   const seen = new Set<string>();
@@ -24,6 +26,20 @@ export function NotesList() {
   const { state, dispatch } = useWorkspace();
   const { notes, moveToFolder, removeNote, duplicate, togglePin, toggleFavorite, restore, permanentDelete } = useNotes();
   const { results: filteredNotes, searchIndex } = useSearch(notes);
+  const { getViewMode, setViewMode } = useLocalPreferences();
+
+  // Initialize viewMode from localStorage on mount
+  React.useEffect(() => {
+    dispatch({ type: 'SET_VIEW_MODE', payload: getViewMode() });
+  }, []);
+
+  const viewMode = state.viewMode;
+
+  const handleViewModeChange = (mode: 'list' | 'grid') => {
+    dispatch({ type: 'SET_VIEW_MODE', payload: mode });
+    setViewMode(mode);
+  };
+
   const availableTags = React.useMemo(() => {
     const tagSource = filterNotes(notes, {
       searchQuery: state.searchQuery,
@@ -47,7 +63,7 @@ export function NotesList() {
   };
 
   return (
-    <div className="ws-notes-list">
+    <div className={`ws-notes-list ${viewMode === 'grid' ? (state.activeNoteId ? 'ws-notes-list--grid-mode ws-notes-list--grid-active' : 'ws-notes-list--grid-mode') : ''}`}>
       <Search />
       <div className="ws-notes-list__privacy-banner">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -60,6 +76,33 @@ export function NotesList() {
         <span className="ws-notes-list__count">
           {filteredNotes.length} {filteredNotes.length === 1 ? 'note' : 'notes'}
         </span>
+        <div className="ws-notes-list__view-toggle">
+          <button
+            className={`ws-notes-list__view-btn ${viewMode === 'list' ? 'ws-notes-list__view-btn--active' : ''}`}
+            onClick={() => handleViewModeChange('list')}
+            title="List view"
+            aria-label="List view"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+          <button
+            className={`ws-notes-list__view-btn ${viewMode === 'grid' ? 'ws-notes-list__view-btn--active' : ''}`}
+            onClick={() => handleViewModeChange('grid')}
+            title="Grid view"
+            aria-label="Grid view"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" />
+            </svg>
+          </button>
+        </div>
         {availableTags.length > 0 && (
           <div className="ws-notes-list__filters">
             <div className="ws-notes-list__filters-header">
@@ -89,59 +132,73 @@ export function NotesList() {
           </div>
         )}
       </div>
-      <div className="ws-notes-list__items">
-        {state.isLoading ? (
-          <div className="ws-notes-list__empty">Loading...</div>
-        ) : filteredNotes.length === 0 ? (
-          <div className="ws-notes-list__empty">
-            {state.searchQuery || state.activeTag ? 'No matching notes' : 'No notes yet'}
-          </div>
-        ) : (
-          filteredNotes.map(({ note, contentText, matchesTitle, matchesContent }) => (
-            <NoteCard
-              key={note.id}
-              note={note}
-              contentText={contentText}
-              matchesTitle={matchesTitle}
-              matchesContent={matchesContent}
-              searchQuery={state.searchQuery}
-              isActive={state.activeNoteId === note.id}
-              onClick={() => handleSelectNote(note.id)}
-              onTagClick={handleTagFilter}
-              onDelete={note.type !== 'scratchpad' ? () => state.sidebarView === 'trash' ? permanentDelete(note.id) : removeNote(note.id) : undefined}
-              onDuplicate={state.sidebarView !== 'trash' ? () => duplicate(note.id) : undefined}
-              onTogglePin={state.sidebarView !== 'trash' ? () => togglePin(note.id) : undefined}
-              onToggleFavorite={state.sidebarView !== 'trash' ? () => toggleFavorite(note.id) : undefined}
-              onRestore={state.sidebarView === 'trash' ? () => restore(note.id) : undefined}
-              renderMenuExtras={state.sidebarView !== 'trash' ? (closeMenu) => (
-                <>
-                  <div className="ws-note-card__menu-separator" />
-                  <div className="ws-note-card__menu-label">Move to folder</div>
-                  <button
-                    onClick={() => {
-                      moveToFolder(note.id, null);
-                      closeMenu();
-                    }}
-                  >
-                    {note.folderId ? 'No folder' : '✓ No folder'}
-                  </button>
-                  {state.folders.map((folder) => (
+
+      {viewMode === 'grid' ? (
+        <div className="ws-notes-list__grid-container">
+          <NotesGrid
+            notes={filteredNotes}
+            isLoading={state.isLoading}
+            searchQuery={state.searchQuery}
+            activeTag={state.activeTag}
+            onSelectNote={handleSelectNote}
+            onTagClick={handleTagFilter}
+          />
+        </div>
+      ) : (
+        <div className="ws-notes-list__items">
+          {state.isLoading ? (
+            <div className="ws-notes-list__empty">Loading...</div>
+          ) : filteredNotes.length === 0 ? (
+            <div className="ws-notes-list__empty">
+              {state.searchQuery || state.activeTag ? 'No matching notes' : 'No notes yet'}
+            </div>
+          ) : (
+            filteredNotes.map(({ note, contentText, matchesTitle, matchesContent }) => (
+              <NoteCard
+                key={note.id}
+                note={note}
+                contentText={contentText}
+                matchesTitle={matchesTitle}
+                matchesContent={matchesContent}
+                searchQuery={state.searchQuery}
+                isActive={state.activeNoteId === note.id}
+                onClick={() => handleSelectNote(note.id)}
+                onTagClick={handleTagFilter}
+                onDelete={note.type !== 'scratchpad' ? () => state.sidebarView === 'trash' ? permanentDelete(note.id) : removeNote(note.id) : undefined}
+                onDuplicate={state.sidebarView !== 'trash' ? () => duplicate(note.id) : undefined}
+                onTogglePin={state.sidebarView !== 'trash' ? () => togglePin(note.id) : undefined}
+                onToggleFavorite={state.sidebarView !== 'trash' ? () => toggleFavorite(note.id) : undefined}
+                onRestore={state.sidebarView === 'trash' ? () => restore(note.id) : undefined}
+                renderMenuExtras={state.sidebarView !== 'trash' ? (closeMenu) => (
+                  <>
+                    <div className="ws-note-card__menu-separator" />
+                    <div className="ws-note-card__menu-label">Move to folder</div>
                     <button
-                      key={folder.id}
                       onClick={() => {
-                        moveToFolder(note.id, folder.id);
+                        moveToFolder(note.id, null);
                         closeMenu();
                       }}
                     >
-                      {note.folderId === folder.id ? `✓ ${folder.name}` : folder.name}
+                      {note.folderId ? 'No folder' : '✓ No folder'}
                     </button>
-                  ))}
-                </>
-              ) : undefined}
-            />
-          ))
-        )}
-      </div>
+                    {state.folders.map((folder) => (
+                      <button
+                        key={folder.id}
+                        onClick={() => {
+                          moveToFolder(note.id, folder.id);
+                          closeMenu();
+                        }}
+                      >
+                        {note.folderId === folder.id ? `✓ ${folder.name}` : folder.name}
+                      </button>
+                    ))}
+                  </>
+                ) : undefined}
+              />
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

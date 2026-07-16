@@ -27,6 +27,14 @@ export function useLocalPreferences() {
     setPreference('sidebar-collapsed', collapsed);
   }, []);
 
+  const getViewMode = useCallback((): 'list' | 'grid' => {
+    return getPreference<'list' | 'grid'>('view-mode', 'list');
+  }, []);
+
+  const setViewMode = useCallback((mode: 'list' | 'grid') => {
+    setPreference('view-mode', mode);
+  }, []);
+
   const [theme, setThemeState] = useState<'light' | 'dark'>(() => {
     return getPreference<'light' | 'dark'>('theme', 'light');
   });
@@ -43,5 +51,5 @@ export function useLocalPreferences() {
     });
   }, []);
 
-  return { getSortPreference, setSortPreference, getLastOpenedNote, setLastOpenedNote, getSidebarCollapsed, setSidebarCollapsed, theme, toggleTheme };
+  return { getSortPreference, setSortPreference, getLastOpenedNote, setLastOpenedNote, getSidebarCollapsed, setSidebarCollapsed, getViewMode, setViewMode, theme, toggleTheme };
 }

@@ -63,6 +63,38 @@ export function Editor() {
   const [showHistory, setShowHistory] = useState(false);
   const [spellCheck, setSpellCheck] = useState(true);
   const importFileRef = useRef<HTMLInputElement>(null);
+  const [linkContextMenu, setLinkContextMenu] = useState<{ x: number; y: number; href: string } | null>(null);
+
+  const handleEditorContextMenu = useCallback((e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const linkEl = target.closest('a[href]') as HTMLAnchorElement | null;
+    if (linkEl) {
+      const href = linkEl.getAttribute('href');
+      if (href) {
+        e.preventDefault();
+        e.stopPropagation();
+        setLinkContextMenu({ x: e.clientX, y: e.clientY, href });
+      }
+    }
+  }, []);
+
+  const handleCopyLink = useCallback(() => {
+    if (linkContextMenu) {
+      navigator.clipboard.writeText(linkContextMenu.href);
+      setLinkContextMenu(null);
+    }
+  }, [linkContextMenu]);
+
+  useEffect(() => {
+    if (!linkContextMenu) return;
+    const close = () => setLinkContextMenu(null);
+    document.addEventListener('click', close);
+    document.addEventListener('contextmenu', close);
+    return () => {
+      document.removeEventListener('click', close);
+      document.removeEventListener('contextmenu', close);
+    };
+  }, [linkContextMenu]);
 
   const handleNoteLinkClick = useCallback((noteId: string) => {
     dispatch({ type: 'SET_ACTIVE_NOTE', payload: noteId });
@@ -246,6 +278,16 @@ export function Editor() {
     },
   });
 
+  // Attach contextmenu listener for link right-click
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom;
+    dom.addEventListener('contextmenu', handleEditorContextMenu);
+    return () => {
+      dom.removeEventListener('contextmenu', handleEditorContextMenu);
+    };
+  }, [editor, handleEditorContextMenu]);
+
   const { debouncedSave, saveNow } = useAutosave(currentNote);
 
   // Keep debouncedSave ref in sync so onUpdate closure always calls latest
@@ -395,6 +437,17 @@ export function Editor() {
         onRestore={handleRestoreRevision}
       />
       <div className="ws-editor__header">
+        {state.viewMode === 'grid' && (
+          <button
+            className="ws-editor__back-to-grid"
+            onClick={() => dispatch({ type: 'SET_ACTIVE_NOTE', payload: null })}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            All Notes
+          </button>
+        )}
         <div className="ws-editor__title-row">
           {isEditingTitle && !isScratchpad ? (
             <input
@@ -547,6 +600,15 @@ export function Editor() {
       </div>
       <div className="ws-editor__content">
         <EditorContent editor={editor} />
+        {linkContextMenu && (
+          <div
+            className="ws-editor__link-context-menu"
+            style={{ top: linkContextMenu.y, left: linkContextMenu.x }}
+          >
+            <button onClick={handleCopyLink}>Copy link</button>
+            <button onClick={() => { window.open(linkContextMenu.href, '_blank'); setLinkContextMenu(null); }}>Open link</button>
+          </div>
+        )}
       </div>
     </div>
   );
