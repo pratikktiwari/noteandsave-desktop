@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useEditor, EditorContent, type JSONContent } from '@tiptap/react';
+import { useEditor, EditorContent, ReactNodeViewRenderer, type JSONContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
@@ -17,6 +17,7 @@ import { common, createLowlight } from 'lowlight';
 import { Extension } from '@tiptap/core';
 import { nanoid } from 'nanoid';
 import { linkPreviewPlugin } from '../lib/link-preview-plugin';
+import { CodeBlockView } from './CodeBlockView';
 import { saveImage, getNote as getDBNote, updateNote, type Revision } from '../lib/db';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { useAutosave } from '../hooks/useAutosave';
@@ -159,7 +160,11 @@ export function Editor() {
       Placeholder.configure({
         placeholder: 'Start writing...',
       }),
-      CodeBlockLowlight.configure({
+      CodeBlockLowlight.extend({
+        addNodeView() {
+          return ReactNodeViewRenderer(CodeBlockView);
+        },
+      }).configure({
         lowlight,
       }),
       SlashCommandExtension,
@@ -253,9 +258,11 @@ export function Editor() {
     if (!editor || !currentNote) return;
     if (prevNoteIdRef.current === currentNote.id) return;
     prevNoteIdRef.current = currentNote.id;
-    isSettingContentRef.current = true;
-    editor.commands.setContent(currentNote.content || { type: 'doc', content: [{ type: 'paragraph' }] });
-    isSettingContentRef.current = false;
+    queueMicrotask(() => {
+      isSettingContentRef.current = true;
+      editor.commands.setContent(currentNote.content || { type: 'doc', content: [{ type: 'paragraph' }] });
+      isSettingContentRef.current = false;
+    });
   }, [editor, currentNote]);
 
   // Sync spellcheck attribute when toggle changes

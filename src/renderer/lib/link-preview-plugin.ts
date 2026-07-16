@@ -3,7 +3,7 @@ import { EditorView } from '@tiptap/pm/view';
 
 const linkPreviewPluginKey = new PluginKey('linkPreview');
 
-const TOOLTIP_OFFSET_Y = 4;
+const TOOLTIP_OFFSET_Y = 8;
 const HIDE_DELAY_MS = 150;
 
 /**
@@ -38,13 +38,14 @@ export function linkPreviewPlugin(): Plugin {
     tooltip.textContent = href;
     tooltip.style.display = 'block';
 
-    // Position tooltip below the link
+    // Position tooltip below the link, aligned to link start
     const linkRect = linkEl.getBoundingClientRect();
-    const parentRect = view.dom.parentElement?.getBoundingClientRect();
-    if (!parentRect) return;
+    const container = tooltip.offsetParent as HTMLElement || view.dom.parentElement;
+    const containerRect = container?.getBoundingClientRect();
+    if (!containerRect) return;
 
-    const top = linkRect.bottom - parentRect.top + TOOLTIP_OFFSET_Y;
-    const left = linkRect.left - parentRect.left;
+    const top = linkRect.bottom - containerRect.top + container.scrollTop + TOOLTIP_OFFSET_Y;
+    const left = linkRect.left - containerRect.left + container.scrollLeft;
 
     tooltip.style.top = `${top}px`;
     tooltip.style.left = `${left}px`;

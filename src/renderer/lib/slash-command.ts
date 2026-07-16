@@ -1,6 +1,9 @@
 import { Extension } from '@tiptap/react';
 import Suggestion from '@tiptap/suggestion';
+import { PluginKey } from '@tiptap/pm/state';
 import { slashCommands } from '../components/SlashCommandMenu';
+
+const slashCommandPluginKey = new PluginKey('slashCommand');
 
 export const SlashCommandExtension = Extension.create({
   name: 'slashCommand',
@@ -26,6 +29,7 @@ export const SlashCommandExtension = Extension.create({
       Suggestion({
         editor: this.editor,
         ...this.options.suggestion,
+        pluginKey: slashCommandPluginKey,
       }),
     ];
   },

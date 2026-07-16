@@ -1,7 +1,10 @@
 import { Extension, ReactRenderer } from '@tiptap/react';
 import Suggestion, { type SuggestionOptions } from '@tiptap/suggestion';
+import { PluginKey } from '@tiptap/pm/state';
 import tippy, { type Instance as TippyInstance } from 'tippy.js';
 import { NoteLinkSuggestionMenu } from '../components/NoteLinkSuggestionMenu';
+
+const noteLinkSuggestionPluginKey = new PluginKey('noteLinkSuggestion');
 
 export interface NoteLinkItem {
   id: string;
@@ -101,6 +104,7 @@ export const NoteLinkSuggestionExtension = Extension.create<NoteLinkSuggestionOp
       Suggestion({
         editor: this.editor,
         ...this.options.suggestion,
+        pluginKey: noteLinkSuggestionPluginKey,
       }),
     ];
   },

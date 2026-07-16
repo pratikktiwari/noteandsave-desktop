@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, type MenuItemConstructorOptions } from 'electron';
+import { app, BrowserWindow, Menu, shell, type MenuItemConstructorOptions } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 
@@ -93,6 +93,22 @@ const createMainWindow = (): BrowserWindow => {
   } else {
     window.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   }
+
+  // Open external links in the default browser
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+
+  window.webContents.on('will-navigate', (event, url) => {
+    const currentURL = window.webContents.getURL();
+    if (url !== currentURL && (url.startsWith('http://') || url.startsWith('https://'))) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
 
   window.on('closed', () => {
     if (mainWindow === window) {

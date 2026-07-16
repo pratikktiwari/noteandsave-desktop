@@ -38,8 +38,12 @@ export function useNotes() {
           deleted: false,
           type: 'scratchpad',
         };
-        await createNote(newScratchpad);
-        allNotes.unshift(newScratchpad);
+        try {
+          await createNote(newScratchpad);
+          allNotes.unshift(newScratchpad);
+        } catch {
+          // Scratchpad already exists in DB (e.g. soft-deleted) — ignore
+        }
       }
       dispatch({ type: 'SET_NOTES', payload: allNotes });
       dispatch({ type: 'SET_LOADING', payload: false });

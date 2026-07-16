@@ -531,6 +531,9 @@
   font-family: var(--ns-font);
   outline: none;
   transition: border-color 0.15s ease;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .ws-search__input:focus {
@@ -574,7 +577,7 @@
   cursor: pointer;
   transition: background 0.15s ease;
   border: 1px solid transparent;
-  margin: 2px 0;
+  margin: 4px 0;
 }
 
 .ws-note-card:hover {
@@ -1335,7 +1338,6 @@
 .ws-editor__content .tiptap pre {
   background: var(--ns-color-bg-nav);
   border: 1px solid var(--ns-color-hairline);
-  border-radius: var(--ns-radius);
   padding: var(--ns-spacing-md);
   overflow-x: auto;
   font-family: "Fira Code", Menlo, Monaco, monospace;
@@ -1347,6 +1349,136 @@
   padding: 0;
   font-size: inherit;
   color: inherit;
+}
+
+/* Code Block with language selector */
+.ws-codeblock-wrapper {
+  position: relative;
+  margin: var(--ns-spacing-md) 0;
+}
+
+.ws-codeblock-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--ns-color-bg-nav);
+  border: 1px solid var(--ns-color-hairline);
+  border-bottom: none;
+  border-radius: var(--ns-radius) var(--ns-radius) 0 0;
+}
+
+.ws-codeblock-wrapper pre {
+  margin: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.ws-codeblock-lang-select {
+  background: var(--ns-color-bg);
+  color: var(--ns-color-text-muted);
+  border: 1px solid var(--ns-color-hairline);
+  border-radius: var(--ns-radius-sm);
+  padding: 2px 6px;
+  font-size: 11px;
+  font-family: var(--ns-font);
+  cursor: pointer;
+  outline: none;
+}
+
+.ws-codeblock-lang-select:focus {
+  border-color: var(--ns-color-accent);
+}
+
+.ws-codeblock-detect-btn {
+  background: none;
+  border: 1px solid var(--ns-color-hairline);
+  border-radius: var(--ns-radius-sm);
+  color: var(--ns-color-text-muted);
+  font-size: 11px;
+  padding: 2px 6px;
+  cursor: pointer;
+  font-family: var(--ns-font);
+}
+
+.ws-codeblock-detect-btn:hover {
+  background: var(--ns-color-bg);
+  color: var(--ns-color-text);
+}
+
+/* --- Syntax Highlighting (lowlight/highlight.js) --- */
+.ws-editor__content .tiptap .hljs-comment,
+.ws-editor__content .tiptap .hljs-quote {
+  color: #8a7560;
+  font-style: italic;
+}
+
+.ws-editor__content .tiptap .hljs-keyword,
+.ws-editor__content .tiptap .hljs-selector-tag,
+.ws-editor__content .tiptap .hljs-built_in,
+.ws-editor__content .tiptap .hljs-name {
+  color: #9b4d16;
+}
+
+.ws-editor__content .tiptap .hljs-string,
+.ws-editor__content .tiptap .hljs-addition {
+  color: #4a7c3f;
+}
+
+.ws-editor__content .tiptap .hljs-number,
+.ws-editor__content .tiptap .hljs-literal {
+  color: #8b5cf6;
+}
+
+.ws-editor__content .tiptap .hljs-title,
+.ws-editor__content .tiptap .hljs-section,
+.ws-editor__content .tiptap .hljs-title\.function_ {
+  color: #b45309;
+}
+
+.ws-editor__content .tiptap .hljs-type,
+.ws-editor__content .tiptap .hljs-title\.class_ {
+  color: #0e7490;
+}
+
+.ws-editor__content .tiptap .hljs-variable,
+.ws-editor__content .tiptap .hljs-template-variable {
+  color: #c2410c;
+}
+
+.ws-editor__content .tiptap .hljs-attr,
+.ws-editor__content .tiptap .hljs-attribute {
+  color: #6d28d9;
+}
+
+.ws-editor__content .tiptap .hljs-tag {
+  color: #9b4d16;
+}
+
+.ws-editor__content .tiptap .hljs-symbol,
+.ws-editor__content .tiptap .hljs-bullet {
+  color: #0891b2;
+}
+
+.ws-editor__content .tiptap .hljs-deletion {
+  color: #b42318;
+}
+
+.ws-editor__content .tiptap .hljs-meta {
+  color: #7a6a5a;
+}
+
+.ws-editor__content .tiptap .hljs-params {
+  color: #272320;
+}
+
+.ws-editor__content .tiptap .hljs-regexp {
+  color: #dc2626;
+}
+
+.ws-editor__content .tiptap .hljs-operator,
+.ws-editor__content .tiptap .hljs-punctuation {
+  color: #57534e;
 }
 
 .ws-editor__content .tiptap code {
