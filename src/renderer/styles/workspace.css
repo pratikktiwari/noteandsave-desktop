@@ -1054,6 +1054,71 @@
   position: relative;
 }
 
+/* --- Find Bar --- */
+.ws-editor__find-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--ns-color-bg-alt);
+  border-bottom: 1px solid var(--ns-color-hairline);
+}
+
+.ws-editor__find-input {
+  flex: 1;
+  min-width: 120px;
+  max-width: 260px;
+  padding: 4px 8px;
+  font-size: var(--ns-text-sm);
+  border: 1px solid var(--ns-color-hairline);
+  border-radius: var(--ns-radius);
+  background: var(--ns-color-bg);
+  color: var(--ns-color-text);
+  outline: none;
+}
+
+.ws-editor__find-input:focus {
+  border-color: var(--ns-color-accent);
+}
+
+.ws-editor__find-count {
+  font-size: var(--ns-text-xs);
+  color: var(--ns-color-text-muted);
+  min-width: 36px;
+  text-align: center;
+}
+
+.ws-editor__find-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  border-radius: var(--ns-radius);
+  color: var(--ns-color-text-muted);
+  cursor: pointer;
+}
+
+.ws-editor__find-btn:hover {
+  background: var(--ns-color-bg-hover);
+  color: var(--ns-color-text);
+}
+
+.ws-search-match {
+  background: rgba(255, 200, 0, 0.4) !important;
+  border-radius: 2px;
+  padding: 1px 0;
+}
+
+.ws-search-match--current {
+  background: rgba(255, 120, 0, 0.6) !important;
+  border-radius: 2px;
+  padding: 1px 0;
+  outline: 2px solid rgba(255, 120, 0, 0.8);
+}
+
 /* --- Tags --- */
 
 .ws-tag {

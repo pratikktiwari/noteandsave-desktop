@@ -17,6 +17,8 @@ import Placeholder from '@tiptap/extension-placeholder';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { common, createLowlight } from 'lowlight';
 import { Extension } from '@tiptap/core';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { nanoid } from 'nanoid';
 import { linkPreviewPlugin } from '../lib/link-preview-plugin';
 import { CodeBlockView } from './CodeBlockView';
@@ -42,6 +44,39 @@ import type { Note } from '../types';
 
 const lowlight = createLowlight(common);
 
+const searchPluginKey = new PluginKey('search-highlight');
+
+const SearchHighlightExtension = Extension.create({
+  name: 'searchHighlight',
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: searchPluginKey,
+        state: {
+          init() {
+            return DecorationSet.empty;
+          },
+          apply(tr, oldDecorations) {
+            const meta = tr.getMeta(searchPluginKey);
+            if (meta !== undefined) {
+              return meta;
+            }
+            if (tr.docChanged) {
+              return oldDecorations.map(tr.mapping, tr.doc);
+            }
+            return oldDecorations;
+          },
+        },
+        props: {
+          decorations(state) {
+            return searchPluginKey.getState(state);
+          },
+        },
+      }),
+    ];
+  },
+});
+
 const LinkPreviewExtension = Extension.create({
   name: 'linkPreview',
   addProseMirrorPlugins() {
@@ -66,6 +101,10 @@ export function Editor() {
   const [spellCheck, setSpellCheck] = useState(true);
   const importFileRef = useRef<HTMLInputElement>(null);
   const [linkContextMenu, setLinkContextMenu] = useState<{ x: number; y: number; href: string } | null>(null);
+  const [showFind, setShowFind] = useState(false);
+  const [findQuery, setFindQuery] = useState('');
+  const [findResults, setFindResults] = useState<{ total: number; current: number }>({ total: 0, current: 0 });
+  const findInputRef = useRef<HTMLInputElement>(null);
 
   const handleEditorContextMenu = useCallback((e: MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -97,6 +136,24 @@ export function Editor() {
       document.removeEventListener('contextmenu', close);
     };
   }, [linkContextMenu]);
+
+  // Ctrl+F / Cmd+F to open find bar
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        setShowFind(true);
+        setTimeout(() => findInputRef.current?.focus(), 50);
+      }
+      if (e.key === 'Escape' && showFind) {
+        setShowFind(false);
+        setFindQuery('');
+        setFindResults({ total: 0, current: 0 });
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showFind]);
 
   const handleNoteLinkClick = useCallback((noteId: string) => {
     dispatch({ type: 'SET_ACTIVE_NOTE', payload: noteId });
@@ -226,6 +283,7 @@ export function Editor() {
         },
       }),
       LinkPreviewExtension,
+      SearchHighlightExtension,
     ],
     content: currentNote?.content || { type: 'doc', content: [{ type: 'paragraph' }] },
     editorProps: {
@@ -321,6 +379,104 @@ export function Editor() {
     if (!editor) return;
     editor.view.dom.setAttribute('spellcheck', spellCheck ? 'true' : 'false');
   }, [editor, spellCheck]);
+
+  // Find in editor helpers (must be after useEditor)
+  const updateSearchDecorations = useCallback((query: string, currentIdx: number) => {
+    if (!editor) return;
+    if (!query.trim()) {
+      const { tr } = editor.state;
+      tr.setMeta(searchPluginKey, DecorationSet.empty);
+      editor.view.dispatch(tr);
+      return;
+    }
+    const lowerQuery = query.toLowerCase();
+    const decorations: Decoration[] = [];
+    let matchIndex = 0;
+    editor.state.doc.descendants((node, pos) => {
+      if (!node.isText) return;
+      const text = (node.text || '').toLowerCase();
+      let idx = text.indexOf(lowerQuery);
+      while (idx !== -1) {
+        const from = pos + idx;
+        const to = from + query.length;
+        const className = matchIndex === currentIdx ? 'ws-search-match ws-search-match--current' : 'ws-search-match';
+        decorations.push(Decoration.inline(from, to, { class: className }));
+        matchIndex++;
+        idx = text.indexOf(lowerQuery, idx + 1);
+      }
+    });
+    const { tr } = editor.state;
+    tr.setMeta(searchPluginKey, DecorationSet.create(editor.state.doc, decorations));
+    editor.view.dispatch(tr);
+  }, [editor]);
+
+  const scrollToMatch = useCallback((query: string, occurrence: number) => {
+    if (!editor || !query.trim()) return;
+    const lowerQuery = query.toLowerCase();
+    let found = 0;
+    let targetFrom = -1;
+    editor.state.doc.descendants((node, pos) => {
+      if (!node.isText || targetFrom !== -1) return;
+      const text = (node.text || '').toLowerCase();
+      let idx = text.indexOf(lowerQuery);
+      while (idx !== -1) {
+        if (found === occurrence) {
+          targetFrom = pos + idx;
+          return false;
+        }
+        found++;
+        idx = text.indexOf(lowerQuery, idx + 1);
+      }
+    });
+    if (targetFrom !== -1) {
+      const domAtPos = editor.view.domAtPos(targetFrom);
+      if (domAtPos?.node) {
+        const el = domAtPos.node instanceof HTMLElement ? domAtPos.node : domAtPos.node.parentElement;
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [editor]);
+
+  const handleFind = useCallback((query: string) => {
+    setFindQuery(query);
+    if (!editor || !query.trim()) {
+      setFindResults({ total: 0, current: 0 });
+      updateSearchDecorations('', -1);
+      return;
+    }
+    const lowerQuery = query.toLowerCase();
+    let count = 0;
+    editor.state.doc.descendants((node) => {
+      if (!node.isText) return;
+      const text = (node.text || '').toLowerCase();
+      let idx = text.indexOf(lowerQuery);
+      while (idx !== -1) {
+        count++;
+        idx = text.indexOf(lowerQuery, idx + 1);
+      }
+    });
+    setFindResults({ total: count, current: count > 0 ? 1 : 0 });
+    updateSearchDecorations(query, 0);
+    if (count > 0) {
+      scrollToMatch(query, 0);
+    }
+  }, [editor, updateSearchDecorations, scrollToMatch]);
+
+  const handleFindNext = useCallback(() => {
+    if (findResults.total === 0) return;
+    const next = findResults.current >= findResults.total ? 1 : findResults.current + 1;
+    setFindResults((prev) => ({ ...prev, current: next }));
+    updateSearchDecorations(findQuery, next - 1);
+    scrollToMatch(findQuery, next - 1);
+  }, [findResults, findQuery, updateSearchDecorations, scrollToMatch]);
+
+  const handleFindPrev = useCallback(() => {
+    if (findResults.total === 0) return;
+    const prev = findResults.current <= 1 ? findResults.total : findResults.current - 1;
+    setFindResults((r) => ({ ...r, current: prev }));
+    updateSearchDecorations(findQuery, prev - 1);
+    scrollToMatch(findQuery, prev - 1);
+  }, [findResults, findQuery, updateSearchDecorations, scrollToMatch]);
 
   const handleRestoreRevision = (revision: Revision) => {
     if (!currentNote || !editor) return;
@@ -606,6 +762,41 @@ export function Editor() {
           createdAt={currentNote.createdAt}
         />
         <Toolbar editor={editor} spellCheck={spellCheck} onToggleSpellCheck={() => setSpellCheck((v) => !v)} />
+        {showFind && (
+          <div className="ws-editor__find-bar">
+            <input
+              ref={findInputRef}
+              className="ws-editor__find-input"
+              type="text"
+              placeholder="Find in note..."
+              value={findQuery}
+              onChange={(e) => handleFind(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.shiftKey ? handleFindPrev() : handleFindNext();
+                }
+                if (e.key === 'Escape') {
+                  setShowFind(false);
+                  setFindQuery('');
+                  setFindResults({ total: 0, current: 0 });
+                }
+              }}
+              autoFocus
+            />
+            <span className="ws-editor__find-count">
+              {findQuery ? `${findResults.current}/${findResults.total}` : ''}
+            </span>
+            <button className="ws-editor__find-btn" onClick={handleFindPrev} title="Previous (Shift+Enter)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 15l-6-6-6 6"/></svg>
+            </button>
+            <button className="ws-editor__find-btn" onClick={handleFindNext} title="Next (Enter)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <button className="ws-editor__find-btn" onClick={() => { setShowFind(false); setFindQuery(''); setFindResults({ total: 0, current: 0 }); updateSearchDecorations('', -1); }} title="Close (Esc)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+        )}
       </div>
       <div className="ws-editor__content">
         <EditorContent editor={editor} />
