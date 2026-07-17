@@ -10,8 +10,8 @@ export function useNotes() {
   const { state, dispatch } = useWorkspace();
   const [initialized, setInitialized] = useState(false);
 
-  const loadNotes = useCallback(async () => {
-    dispatch({ type: 'SET_LOADING', payload: true });
+  const loadNotes = useCallback(async (showLoading = true) => {
+    if (showLoading) dispatch({ type: 'SET_LOADING', payload: true });
     try {
       const notes = state.sidebarView === 'trash' ? await listDeletedNotes() : await listNotes();
       dispatch({ type: 'SET_NOTES', payload: notes });
@@ -53,7 +53,7 @@ export function useNotes() {
   }, [dispatch, initialized]);
 
   useEffect(() => {
-    if (initialized) loadNotes();
+    if (initialized) loadNotes(false);
   }, [state.sidebarView, initialized, loadNotes]);
 
   const addNote = useCallback(async (type: NoteType = 'note') => {
