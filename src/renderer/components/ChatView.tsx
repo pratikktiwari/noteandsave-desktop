@@ -12,6 +12,14 @@ const SUGGESTIONS = [
   { label: '🔍 Note insights', prompt: 'Analyze my notes and give me insights about my work patterns and focus areas' },
 ];
 
+const FOLLOW_UP_SUGGESTIONS = [
+  { label: '📧 Email this', prompt: 'Format the above as a professional email ready to send' },
+  { label: '🔄 More detail', prompt: 'Can you elaborate on this with more details from my notes?' },
+  { label: '📋 As bullet points', prompt: 'Reformat the above as concise bullet points' },
+  { label: '✏️ Make it shorter', prompt: 'Make this more concise and to the point' },
+  { label: '📅 Add next week plan', prompt: 'Based on my notes, suggest priorities for next week' },
+];
+
 function SimpleMarkdown({ content }: { content: string }) {
   // Minimal markdown rendering for chat messages
   const html = content
@@ -332,6 +340,19 @@ export function ChatView() {
                     <line x1="12" y1="16" x2="12.01" y2="16" />
                   </svg>
                   <span>{error}</span>
+                </div>
+              )}
+              {!isStreaming && messages.length > 0 && messages[messages.length - 1].role === 'assistant' && (
+                <div className="ws-chat__follow-ups">
+                  {FOLLOW_UP_SUGGESTIONS.map((s, i) => (
+                    <button
+                      key={i}
+                      className="ws-chat__suggestion ws-chat__suggestion--follow-up"
+                      onClick={() => handleSuggestionClick(s.prompt)}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
                 </div>
               )}
               <div ref={messagesEndRef} />

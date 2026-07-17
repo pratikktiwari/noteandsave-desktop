@@ -3149,6 +3149,23 @@
   background: var(--ns-color-bg-hover);
 }
 
+.ws-chat__follow-ups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 0 12px 36px;
+}
+
+.ws-chat__suggestion--follow-up {
+  font-size: 11px;
+  padding: 4px 10px;
+  opacity: 0.85;
+}
+
+.ws-chat__suggestion--follow-up:hover {
+  opacity: 1;
+}
+
 /* Message bubbles */
 .ws-chat__message {
   display: flex;
@@ -3191,6 +3208,10 @@
   background: var(--ns-color-accent);
   color: white;
   border-bottom-right-radius: 4px;
+}
+
+:root[data-theme='dark'] .ws-chat__message--user .ws-chat__bubble {
+  background: var(--ns-color-accent-dark);
 }
 
 .ws-chat__message--assistant .ws-chat__bubble {
