@@ -807,6 +807,7 @@ export function Editor() {
           >
             <button onClick={handleCopyLink}>Copy link</button>
             <button onClick={() => { window.open(linkContextMenu.href, '_blank'); setLinkContextMenu(null); }}>Open link</button>
+            <button onClick={() => { editor?.chain().focus().extendMarkRange('link').unsetLink().run(); setLinkContextMenu(null); }}>Remove link</button>
           </div>
         )}
       </div>
