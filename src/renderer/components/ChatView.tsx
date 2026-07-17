@@ -19,13 +19,16 @@ function SimpleMarkdown({ content }: { content: string }) {
     .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
     // Inline code
     .replace(/`([^`]+)`/g, '<code>$1</code>')
-    // Bold (allow multiline with [\s\S])
-    .replace(/\*\*([\s\S]+?)\*\*/g, '<strong>$1</strong>')
-    // Clean up orphaned ** markers that have no closing pair
-    .replace(/\*\*/g, '')
-    // Italic
-    .replace(/(?<!\w)\*(.+?)\*(?!\w)/g, '<em>$1</em>')
-    // Headers
+    // Bold (single line, greedy-safe)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // Remove orphaned ** markers (unclosed bold)
+    .replace(/\*\*(?=[^\s*])/g, '')
+    .replace(/(?<=[^\s*])\*\*/g, '')
+    // Italic (single line, word boundary)
+    .replace(/(?<!\w)\*([^\s*].*?[^\s*])\*(?!\w)/g, '<em>$1</em>')
+    .replace(/(?<!\w)\*([^\s*])\*(?!\w)/g, '<em>$1</em>')
+    // Headers (up to h4)
+    .replace(/^#{4,}\s+(.+)$/gm, '<h5>$1</h5>')
     .replace(/^### (.+)$/gm, '<h4>$1</h4>')
     .replace(/^## (.+)$/gm, '<h3>$1</h3>')
     .replace(/^# (.+)$/gm, '<h2>$1</h2>')

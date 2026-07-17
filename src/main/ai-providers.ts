@@ -26,6 +26,7 @@ export interface AiConfig {
   apiKey: string;         // encrypted at rest, decrypted in memory
   model: string;          // model name / id
   contextLimit?: number;  // max chars of notes context to include
+  noteCharLimit?: number; // max chars per note (0 = full note, no truncation)
 }
 
 export interface ChatMessage {
@@ -95,23 +96,43 @@ const ollamaProvider: AiProvider = {
     });
 
     let fullText = '';
+    let buffer = '';
 
     const { abort } = makeRequest(
       url, 'POST',
       { 'Content-Type': 'application/json' },
       payload,
       (chunk) => {
-        for (const line of chunk.split('\n').filter(Boolean)) {
+        buffer += chunk;
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.trim()) continue;
           try {
             const data = JSON.parse(line);
             if (data.message?.content) {
               fullText += data.message.content;
               onToken(data.message.content);
             }
-          } catch { /* partial JSON, ignore */ }
+          } catch {
+            // Partial JSON — put back in buffer for next chunk
+            buffer = line + '\n' + buffer;
+          }
         }
       },
-      () => onDone(fullText),
+      () => {
+        // Process any remaining buffer
+        if (buffer.trim()) {
+          try {
+            const data = JSON.parse(buffer);
+            if (data.message?.content) {
+              fullText += data.message.content;
+              onToken(data.message.content);
+            }
+          } catch { /* ignore */ }
+        }
+        onDone(fullText);
+      },
       (err) => onError(err.message),
     );
 
@@ -162,15 +183,19 @@ function openAiCompatibleChat(
 
   const payload = JSON.stringify({ model, messages, stream: true });
   let fullText = '';
+  let buffer = '';
 
   const { abort } = makeRequest(
     url, 'POST', headers, payload,
     (chunk) => {
-      for (const line of chunk.split('\n')) {
+      buffer += chunk;
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
         const trimmed = line.trim();
-        if (!trimmed.startsWith('data: ')) continue;
-        const jsonStr = trimmed.slice(6);
-        if (jsonStr === '[DONE]') return;
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+        const jsonStr = trimmed.slice(6).trim();
+        if (jsonStr === '[DONE]') continue;
         try {
           const parsed = JSON.parse(jsonStr);
           const token = parsed.choices?.[0]?.delta?.content;
@@ -178,10 +203,31 @@ function openAiCompatibleChat(
             fullText += token;
             callbacks.onToken(token);
           }
-        } catch { /* partial */ }
+        } catch {
+          // If parse fails, it could be a split line — put it back in buffer
+          buffer = trimmed + '\n' + buffer;
+        }
       }
     },
-    () => callbacks.onDone(fullText),
+    () => {
+      if (buffer.trim()) {
+        const trimmed = buffer.trim();
+        if (trimmed.startsWith('data: ')) {
+          const jsonStr = trimmed.slice(6);
+          if (jsonStr !== '[DONE]') {
+            try {
+              const parsed = JSON.parse(jsonStr);
+              const token = parsed.choices?.[0]?.delta?.content;
+              if (token) {
+                fullText += token;
+                callbacks.onToken(token);
+              }
+            } catch { /* ignore */ }
+          }
+        }
+      }
+      callbacks.onDone(fullText);
+    },
     (err) => callbacks.onError(err.message),
   );
 
@@ -273,13 +319,17 @@ const geminiProvider: AiProvider = {
     }
 
     let fullText = '';
+    let buffer = '';
 
     const { abort } = makeRequest(
       url, 'POST',
       { 'Content-Type': 'application/json' },
       JSON.stringify(payload),
       (chunk) => {
-        for (const line of chunk.split('\n')) {
+        buffer += chunk;
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed.startsWith('data: ')) continue;
           try {
@@ -289,10 +339,25 @@ const geminiProvider: AiProvider = {
               fullText += text;
               onToken(text);
             }
-          } catch { /* partial */ }
+          } catch { /* partial line buffered */ }
         }
       },
-      () => onDone(fullText),
+      () => {
+        if (buffer.trim()) {
+          const trimmed = buffer.trim();
+          if (trimmed.startsWith('data: ')) {
+            try {
+              const parsed = JSON.parse(trimmed.slice(6));
+              const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (text) {
+                fullText += text;
+                onToken(text);
+              }
+            } catch { /* ignore */ }
+          }
+        }
+        onDone(fullText);
+      },
       (err) => onError(err.message),
     );
 

@@ -94,15 +94,18 @@ function tiptapToPlainText(json: any): string {
   return text;
 }
 
-function buildNotesContext(notes: Array<{ title: string; content: any; updatedAt: number; tags: string[] }>, maxChars = 12000): string {
-  const MAX_NOTE_CHARS = 800; // truncate each note to avoid one huge note eating all context
+function buildNotesContext(notes: Array<{ title: string; content: any; updatedAt: number; tags: string[] }>, maxChars = 12000, noteCharLimit?: number): string {
+  const MAX_NOTE_CHARS = noteCharLimit === 0 ? Infinity : (noteCharLimit || 800);
   let context = '';
   for (const note of notes) {
     const date = new Date(note.updatedAt).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
     const tags = note.tags.length ? ` [tags: ${note.tags.join(', ')}]` : '';
     let body = tiptapToPlainText(typeof note.content === 'string' ? JSON.parse(note.content) : note.content).trim();
     if (body.length > MAX_NOTE_CHARS) {
-      body = body.slice(0, MAX_NOTE_CHARS) + '...';
+      // Truncate at word boundary to avoid cutting words
+      const truncated = body.slice(0, MAX_NOTE_CHARS);
+      const lastSpace = truncated.lastIndexOf(' ');
+      body = (lastSpace > MAX_NOTE_CHARS * 0.7 ? truncated.slice(0, lastSpace) : truncated) + '...';
     }
     const entry = `--- ${note.title} (${date})${tags} ---\n${body}\n\n`;
 
@@ -130,6 +133,8 @@ When generating summaries or status updates:
 - Organize by categories/tags when relevant
 - Include dates and key accomplishments
 - Format as markdown for readability
+- Always reproduce names, titles, and terms exactly as written in the notes — never abbreviate or truncate them
+- If a note is truncated in context (ends with ...), say what you can from what is provided
 
 When the user asks for an email summary, format it as a ready-to-send email with subject line, greeting, bullet-point accomplishments, and closing.`;
 
@@ -230,7 +235,8 @@ export function registerAiHandlers(): void {
         stmt.free();
 
         const contextLimit = (config as any).contextLimit || 12000;
-        const context = buildNotesContext(notes, contextLimit);
+        const noteCharLimit = (config as any).noteCharLimit;
+        const context = buildNotesContext(notes, contextLimit, noteCharLimit);
         messages.push({
           role: 'system',
           content: SYSTEM_PROMPT + (context ? `\n\n--- USER'S NOTES ---\n${context}` : '\n\n(The user has no notes yet.)'),

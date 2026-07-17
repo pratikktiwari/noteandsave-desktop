@@ -8,6 +8,7 @@ interface AiConfig {
   apiKey: string;
   model: string;
   contextLimit?: number;
+  noteCharLimit?: number;
 }
 
 const PROVIDER_LABELS: Record<ProviderType, string> = {
@@ -188,6 +189,22 @@ export function Settings({ onClose }: { onClose: () => void }) {
                   />
                   <p className="ws-settings-hint">
                     How much note content to include as context. Increase for cloud models with large context windows (e.g. 50000 for GPT-4o). Keep low (~8000–12000) for local models.
+                  </p>
+                </div>
+
+                <div className="ws-settings-field">
+                  <label className="ws-settings-label">Per-Note Character Limit</label>
+                  <input
+                    className="ws-settings-input"
+                    type="number"
+                    min="0"
+                    max="50000"
+                    step="100"
+                    value={aiConfig.noteCharLimit ?? 800}
+                    onChange={(e) => setAiConfig({ ...aiConfig, noteCharLimit: parseInt(e.target.value) || 0 })}
+                  />
+                  <p className="ws-settings-hint">
+                    Max characters per note sent to the model. Set to 0 to send full notes without truncation. Default is 800. Increase if the AI is missing details from longer notes.
                   </p>
                 </div>
 
