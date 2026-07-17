@@ -271,6 +271,8 @@ const toImageRecord = (row: ImageRow): ImageRecord => ({
   createdAt: row.created_at,
 });
 
+export const getDb = (): SqlJsDatabase => getDatabase();
+
 const getDatabase = (): SqlJsDatabase => {
   if (!database) {
     throw new Error('Database has not been initialized. Call initDatabase() before using database APIs.');

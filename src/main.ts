@@ -4,6 +4,7 @@ import started from 'electron-squirrel-startup';
 
 import { initDatabase } from './main/database';
 import { registerIpcHandlers } from './main/ipc-handlers';
+import { registerAiHandlers } from './main/ai-handler';
 
 if (started) {
   // During Squirrel install/update/uninstall events the process must exit
@@ -134,12 +135,13 @@ const bootstrap = async (): Promise<void> => {
   });
 
   registerIpcHandlers();
+  registerAiHandlers();
   createMenu();
 
   // Set Content-Security-Policy header for all responses
   const isDev = !!MAIN_WINDOW_VITE_DEV_SERVER_URL;
   const csp = isDev
-    ? "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws://localhost:*;"
+    ? "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws://localhost:*;"
     : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:;";
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {

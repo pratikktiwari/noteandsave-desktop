@@ -90,3 +90,11 @@ typings/
 
 # Electron-Forge
 out/
+
+# Code signing certificates
+certs/
+
+
+# Build output
+dist/
+out/

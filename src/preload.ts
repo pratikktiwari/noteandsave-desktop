@@ -76,6 +76,25 @@ export interface DesktopApi {
     onNewWhiteboard: (listener: () => void) => Unsubscribe;
     onToggleSidebar: (listener: () => void) => Unsubscribe;
   };
+  ai: {
+    getConfig: () => Promise<any>;
+    setConfig: (config: any) => Promise<boolean>;
+    testConnection: (config: any) => Promise<{ ok: boolean; error?: string }>;
+    chat: (payload: { messages: any[]; conversationId?: string; includeNotes?: boolean; timeRange?: string }) => void;
+    abort: () => void;
+    onToken: (listener: (token: string) => void) => Unsubscribe;
+    onDone: (listener: (fullText: string) => void) => Unsubscribe;
+    onError: (listener: (error: string) => void) => Unsubscribe;
+    conversations: {
+      list: () => Promise<any[]>;
+      create: (title?: string) => Promise<any>;
+      delete: (id: string) => Promise<boolean>;
+    };
+    messages: {
+      list: (conversationId: string) => Promise<any[]>;
+      save: (msg: { conversationId: string; id: string; role: string; content: string }) => Promise<boolean>;
+    };
+  };
 }
 
 declare global {
@@ -134,6 +153,37 @@ const api: DesktopApi = {
     onNewNote: (listener) => subscribe('menu:newNote', listener),
     onNewWhiteboard: (listener) => subscribe('menu:newWhiteboard', listener),
     onToggleSidebar: (listener) => subscribe('menu:toggleSidebar', listener),
+  },
+  ai: {
+    getConfig: () => ipcRenderer.invoke('ai:getConfig'),
+    setConfig: (config) => ipcRenderer.invoke('ai:setConfig', config),
+    testConnection: (config) => ipcRenderer.invoke('ai:testConnection', config),
+    chat: (payload) => ipcRenderer.send('ai:chat', payload),
+    abort: () => ipcRenderer.send('ai:abort'),
+    onToken: (listener) => {
+      const handler = (_: any, token: string) => listener(token);
+      ipcRenderer.on('ai:chat:token', handler);
+      return () => ipcRenderer.removeListener('ai:chat:token', handler);
+    },
+    onDone: (listener) => {
+      const handler = (_: any, fullText: string) => listener(fullText);
+      ipcRenderer.on('ai:chat:done', handler);
+      return () => ipcRenderer.removeListener('ai:chat:done', handler);
+    },
+    onError: (listener) => {
+      const handler = (_: any, error: string) => listener(error);
+      ipcRenderer.on('ai:chat:error', handler);
+      return () => ipcRenderer.removeListener('ai:chat:error', handler);
+    },
+    conversations: {
+      list: () => ipcRenderer.invoke('ai:conversations:list'),
+      create: (title) => ipcRenderer.invoke('ai:conversations:create', title),
+      delete: (id) => ipcRenderer.invoke('ai:conversations:delete', id),
+    },
+    messages: {
+      list: (conversationId) => ipcRenderer.invoke('ai:messages:list', conversationId),
+      save: (msg) => ipcRenderer.invoke('ai:messages:save', msg),
+    },
   },
 };
 

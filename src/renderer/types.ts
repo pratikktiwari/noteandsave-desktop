@@ -43,7 +43,7 @@ export interface StoredImage {
 }
 
 export type SortOption = 'updatedAt' | 'createdAt' | 'title';
-export type SidebarView = 'all' | 'favorites' | 'pinned' | 'trash' | 'folder' | 'whiteboards';
+export type SidebarView = 'all' | 'favorites' | 'pinned' | 'trash' | 'folder' | 'whiteboards' | 'chat';
 
 export interface WorkspaceState {
   notes: Note[];

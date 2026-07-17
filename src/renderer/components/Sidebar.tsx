@@ -176,6 +176,8 @@ export function Sidebar({
         </div>
       </div>
 
+      <div className="ws-sidebar__scrollable">
+
       <div className="ws-sidebar__actions">
         <button
           className="ws-sidebar__btn ws-sidebar__btn--primary"
@@ -324,6 +326,24 @@ export function Sidebar({
             <path d="M8 12h.01M12 12h.01M16 12h.01" strokeWidth="3" strokeLinecap="round" />
           </svg>
           Whiteboards
+        </button>
+
+        <button
+          className={`ws-sidebar__nav-item ${state.sidebarView === "chat" ? "ws-sidebar__nav-item--active" : ""}`}
+          onClick={() => setView("chat")}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M12 2C6.48 2 2 6.02 2 10.87c0 2.82 1.5 5.33 3.85 6.98L4 22l4.59-2.56c1.08.35 2.22.56 3.41.56 5.52 0 10-4.02 10-8.87S17.52 2 12 2z" />
+            <path d="M8 10h.01M12 10h.01M16 10h.01" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          AI Chat
         </button>
 
         <div className="ws-sidebar__separator" />
@@ -483,6 +503,7 @@ export function Sidebar({
             )}
           </div>
         )}
+      </div>
       </div>
 
       <div className="ws-sidebar__footer">
