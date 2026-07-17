@@ -2559,6 +2559,18 @@
   text-overflow: ellipsis;
 }
 
+.ws-wb-card__rename-input {
+  font-size: var(--ns-text-sm);
+  font-weight: 500;
+  color: var(--ns-color-text);
+  background: var(--ns-color-bg-alt);
+  border: 1px solid var(--ns-color-accent);
+  border-radius: var(--ns-radius);
+  padding: 2px 6px;
+  width: 100%;
+  outline: none;
+}
+
 .ws-wb-card__meta {
   font-size: var(--ns-text-xs);
   color: var(--ns-color-text-faint);

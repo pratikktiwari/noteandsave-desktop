@@ -4,6 +4,11 @@ import type { Whiteboard } from '../types';
 interface WhiteboardCardProps {
   whiteboard: Whiteboard;
   isActive: boolean;
+  isRenaming?: boolean;
+  renameValue?: string;
+  onRenameChange?: (value: string) => void;
+  onRenameSubmit?: () => void;
+  onRenameCancel?: () => void;
   onClick: () => void;
   onDelete?: () => void;
   onRename?: () => void;
@@ -28,6 +33,11 @@ function formatRelativeTime(timestamp: number): string {
 export function WhiteboardCard({
   whiteboard,
   isActive,
+  isRenaming,
+  renameValue,
+  onRenameChange,
+  onRenameSubmit,
+  onRenameCancel,
   onClick,
   onDelete,
   onRename,
@@ -50,7 +60,23 @@ export function WhiteboardCard({
         </svg>
       </div>
       <div className="ws-wb-card__content">
-        <span className="ws-wb-card__title">{whiteboard.title}</span>
+        {isRenaming ? (
+          <input
+            className="ws-wb-card__rename-input"
+            type="text"
+            value={renameValue || ''}
+            onChange={(e) => onRenameChange?.(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') onRenameSubmit?.();
+              if (e.key === 'Escape') onRenameCancel?.();
+            }}
+            onBlur={() => onRenameSubmit?.()}
+            onClick={(e) => e.stopPropagation()}
+            autoFocus
+          />
+        ) : (
+          <span className="ws-wb-card__title">{whiteboard.title}</span>
+        )}
         <span className="ws-wb-card__meta">
           {whiteboard.pinned && '📌 '}
           {whiteboard.favorite && '⭐ '}

@@ -16,6 +16,8 @@ export function WhiteboardList() {
     renameWhiteboard,
   } = useWhiteboards();
   const [searchQuery, setSearchQuery] = useState('');
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
 
   const filteredWhiteboards = useMemo(() => {
     let list = whiteboards;
@@ -52,10 +54,21 @@ export function WhiteboardList() {
   const handleRename = (id: string) => {
     const wb = whiteboards.find((w) => w.id === id);
     if (!wb) return;
-    const newTitle = window.prompt('Rename whiteboard:', wb.title);
-    if (newTitle && newTitle.trim()) {
-      renameWhiteboard(id, newTitle.trim());
+    setRenamingId(id);
+    setRenameValue(wb.title);
+  };
+
+  const handleRenameSubmit = () => {
+    if (renamingId && renameValue.trim()) {
+      renameWhiteboard(renamingId, renameValue.trim());
     }
+    setRenamingId(null);
+    setRenameValue('');
+  };
+
+  const handleRenameCancel = () => {
+    setRenamingId(null);
+    setRenameValue('');
   };
 
   return (
@@ -83,6 +96,11 @@ export function WhiteboardList() {
               key={wb.id}
               whiteboard={wb}
               isActive={state.activeWhiteboardId === wb.id}
+              isRenaming={renamingId === wb.id}
+              renameValue={renameValue}
+              onRenameChange={setRenameValue}
+              onRenameSubmit={handleRenameSubmit}
+              onRenameCancel={handleRenameCancel}
               onClick={() => dispatch({ type: 'SET_ACTIVE_WHITEBOARD', payload: wb.id })}
               onDelete={isTrash ? () => permanentlyDeleteWhiteboard(wb.id) : () => removeWhiteboard(wb.id)}
               onRename={isTrash ? undefined : () => handleRename(wb.id)}
