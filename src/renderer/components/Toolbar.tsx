@@ -17,13 +17,27 @@ interface ToolbarButton {
 export function Toolbar({ editor, spellCheck, onToggleSpellCheck }: ToolbarProps) {
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
+  const [showColorPicker, setShowColorPicker] = useState(false);
   const linkInputRef = useRef<HTMLInputElement>(null);
+  const colorPickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (showLinkInput && linkInputRef.current) {
       linkInputRef.current.focus();
     }
   }, [showLinkInput]);
+
+  // Close color picker on outside click
+  useEffect(() => {
+    if (!showColorPicker) return;
+    const handleClick = (e: MouseEvent) => {
+      if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) {
+        setShowColorPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showColorPicker]);
 
   if (!editor) return null;
 
@@ -284,6 +298,50 @@ export function Toolbar({ editor, spellCheck, onToggleSpellCheck }: ToolbarProps
             {btn.icon}
           </button>
         ))}
+      </div>
+      <div className="ws-toolbar__separator" />
+      <div className="ws-toolbar__group ws-toolbar__color-group" ref={colorPickerRef}>
+        <button
+          className={`ws-toolbar__btn ${editor.isActive('textStyle') ? 'ws-toolbar__btn--active' : ''}`}
+          onClick={() => setShowColorPicker(!showColorPicker)}
+          title="Text color"
+          aria-label="Text color"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M4 20h16" stroke={editor.getAttributes('textStyle').color || 'currentColor'} strokeWidth="3" />
+            <path d="M9.5 4h5l4.5 12h-2l-1-3H8l-1 3H5L9.5 4z" />
+          </svg>
+        </button>
+        {showColorPicker && (
+          <div className="ws-toolbar__color-picker">
+            {[
+              { color: null, label: 'Default' },
+              { color: '#e53e3e', label: 'Red' },
+              { color: '#dd6b20', label: 'Orange' },
+              { color: '#d69e2e', label: 'Yellow' },
+              { color: '#38a169', label: 'Green' },
+              { color: '#3182ce', label: 'Blue' },
+              { color: '#805ad5', label: 'Purple' },
+              { color: '#d53f8c', label: 'Pink' },
+              { color: '#718096', label: 'Gray' },
+            ].map((item) => (
+              <button
+                key={item.label}
+                className={`ws-toolbar__color-swatch ${!item.color ? 'ws-toolbar__color-swatch--default' : ''}`}
+                style={item.color ? { backgroundColor: item.color } : undefined}
+                title={item.label}
+                onClick={() => {
+                  if (item.color) {
+                    editor.chain().focus().setColor(item.color).run();
+                  } else {
+                    editor.chain().focus().unsetColor().run();
+                  }
+                  setShowColorPicker(false);
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
       <div className="ws-toolbar__separator" />
       <div className="ws-toolbar__group">

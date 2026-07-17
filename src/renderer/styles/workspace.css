@@ -1244,6 +1244,54 @@
   color: var(--ns-color-accent);
 }
 
+/* Text color picker */
+.ws-toolbar__color-group {
+  position: relative;
+}
+
+.ws-toolbar__color-picker {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  background: var(--ns-color-bg);
+  border: 1px solid var(--ns-color-hairline);
+  border-radius: var(--ns-radius);
+  box-shadow: var(--ns-shadow-card);
+  z-index: 100;
+}
+
+.ws-toolbar__color-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.1s;
+}
+
+.ws-toolbar__color-swatch:hover {
+  transform: scale(1.2);
+  border-color: var(--ns-color-text-muted);
+}
+
+.ws-toolbar__color-swatch--default {
+  background: var(--ns-color-text);
+  position: relative;
+}
+
+.ws-toolbar__color-swatch--default::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--ns-color-bg);
+}
+
 .ws-toolbar__link-input {
   display: flex;
   align-items: center;

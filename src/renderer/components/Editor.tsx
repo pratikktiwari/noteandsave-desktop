@@ -6,6 +6,8 @@ import TaskItem from '@tiptap/extension-task-item';
 import Highlight from '@tiptap/extension-highlight';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
+import Color from '@tiptap/extension-color';
+import { TextStyle } from '@tiptap/extension-text-style';
 import { ResizableImageExtension } from '../lib/resizable-image';
 import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
@@ -177,6 +179,8 @@ export function Editor() {
         multicolor: false,
       }),
       Underline,
+      TextStyle,
+      Color,
       Link.configure({
         openOnClick: true,
         HTMLAttributes: {
