@@ -148,7 +148,7 @@ export function CodeBlockView({ node, updateAttributes, extension }: NodeViewPro
           </button>
         )}
       </div>
-      <pre>
+      <pre spellCheck={false}>
         <NodeViewContent as="code" />
       </pre>
     </NodeViewWrapper>

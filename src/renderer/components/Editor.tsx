@@ -163,6 +163,11 @@ export function Editor() {
     extensions: [
       StarterKit.configure({
         codeBlock: false,
+        code: {
+          HTMLAttributes: {
+            spellcheck: 'false',
+          },
+        },
       }),
       TaskList,
       TaskItem.configure({
