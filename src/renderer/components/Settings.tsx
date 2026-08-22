@@ -11,6 +11,8 @@ interface AiConfig {
   noteCharLimit?: number;
 }
 
+type GitSyncStatus = Awaited<ReturnType<typeof window.api.gitSync.status>>;
+
 const PROVIDER_LABELS: Record<ProviderType, string> = {
   ollama: 'Ollama (Local)',
   lmstudio: 'LM Studio (Local)',
@@ -27,6 +29,15 @@ const PROVIDER_DEFAULTS: Record<ProviderType, { endpoint: string; model: string;
 
 export function Settings({ onClose }: { onClose: () => void }) {
   const [dataPath, setDataPath] = useState<string>('');
+  const [storageMode, setStorageMode] = useState<'sqlite' | 'files'>('sqlite');
+  const [migrationError, setMigrationError] = useState<string | null>(null);
+  const [migrating, setMigrating] = useState(false);
+  const [gitStatus, setGitStatus] = useState<GitSyncStatus | null>(null);
+  const [repositoryUrl, setRepositoryUrl] = useState('');
+  const [gitBranch, setGitBranch] = useState('main');
+  const [gitToken, setGitToken] = useState('');
+  const [gitBusy, setGitBusy] = useState(false);
+  const [gitActionError, setGitActionError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // AI settings
@@ -41,20 +52,80 @@ export function Settings({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     Promise.all([
       window.api.settings.get<string>('dataPath'),
+      window.api.workspace.status(),
+      window.api.gitSync.status(),
       window.api.ai.getConfig(),
-    ]).then(([path, config]) => {
-      setDataPath((path as string) ?? '~/Documents/NoteAndSave');
+    ]).then(([path, storage, syncStatus, config]) => {
+      setDataPath(storage.mode === 'files' ? storage.workspacePath : (path as string) ?? storage.legacyDbPath);
+      setStorageMode(storage.mode);
+      setGitStatus(syncStatus);
+      setRepositoryUrl(syncStatus.repositoryUrl ?? '');
+      setGitBranch(syncStatus.branch ?? 'main');
       setLoading(false);
       setAiConfig(config as AiConfig);
       setAiLoading(false);
     });
+    return window.api.gitSync.onStatus(setGitStatus);
   }, []);
 
-  const handleChangeLocation = async () => {
-    const selected = await window.api.dialog.selectFolder();
-    if (selected) {
-      await window.api.settings.set('dataPath', selected);
-      setDataPath(selected);
+  const handleMigration = async () => {
+    setMigrating(true);
+    setMigrationError(null);
+    try {
+      const storage = await window.api.workspace.migrate();
+      setStorageMode(storage.mode);
+      setDataPath(storage.workspacePath);
+      window.location.reload();
+    } catch (error) {
+      setMigrationError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setMigrating(false);
+    }
+  };
+
+  const handleLinkRepository = async () => {
+    setGitBusy(true);
+    try {
+      const nextStatus = await window.api.gitSync.link({
+        repositoryUrl: repositoryUrl.trim(),
+        branch: gitBranch.trim() || 'main',
+        token: gitToken,
+      });
+      setGitStatus(nextStatus);
+      if (nextStatus.state !== 'error') setGitToken('');
+    } finally {
+      setGitBusy(false);
+    }
+  };
+
+  const handleSyncNow = async () => {
+    setGitBusy(true);
+    try {
+      setGitStatus(await window.api.gitSync.now());
+    } finally {
+      setGitBusy(false);
+    }
+  };
+
+  const handleUnlinkRepository = async () => {
+    setGitBusy(true);
+    try {
+      setGitStatus(await window.api.gitSync.unlink());
+      setGitToken('');
+    } finally {
+      setGitBusy(false);
+    }
+  };
+
+  const handleSyncIntervalChange = async (minutes: number) => {
+    setGitBusy(true);
+    setGitActionError(null);
+    try {
+      setGitStatus(await window.api.gitSync.setInterval(minutes));
+    } catch (error) {
+      setGitActionError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setGitBusy(false);
     }
   };
 
@@ -104,13 +175,123 @@ export function Settings({ onClose }: { onClose: () => void }) {
             </p>
             <div className="ws-settings-path-row">
               <code className="ws-settings-path">{loading ? '...' : dataPath}</code>
-              <button className="ws-settings-btn" onClick={handleChangeLocation}>
-                Change Location
-              </button>
             </div>
             <p className="ws-settings-hint">
-              Restart the app after changing the data location.
+              Storage format: {storageMode === 'files' ? 'Markdown files' : 'SQLite (legacy)'}
             </p>
+            {storageMode === 'sqlite' && (
+              <>
+                <p className="ws-settings-description">
+                  GitHub sync requires file storage. Migration creates a backup and keeps your current database unchanged.
+                </p>
+                <button className="ws-settings-btn ws-settings-btn--primary" onClick={handleMigration} disabled={migrating}>
+                  {migrating ? 'Migrating...' : 'Migrate to File Storage'}
+                </button>
+                {migrationError && (
+                  <p className="ws-settings-test-result ws-settings-test-result--error">{migrationError}</p>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="ws-settings-section">
+            <h3 className="ws-settings-section-title">GitHub Sync</h3>
+            {storageMode === 'sqlite' ? (
+              <p className="ws-settings-description">
+                Migrate to file storage before linking a GitHub repository.
+              </p>
+            ) : !gitStatus?.repositoryUrl ? (
+              <div className="ws-settings-ai">
+                <p className="ws-settings-description">
+                  Link a dedicated GitHub repository. Your token is encrypted using OS secure storage.
+                </p>
+                <div className="ws-settings-field">
+                  <label className="ws-settings-label">Repository URL</label>
+                  <input
+                    className="ws-settings-input"
+                    type="url"
+                    value={repositoryUrl}
+                    onChange={(event) => setRepositoryUrl(event.target.value)}
+                    placeholder="https://github.com/username/notes.git"
+                  />
+                </div>
+                <div className="ws-settings-field">
+                  <label className="ws-settings-label">Branch</label>
+                  <input
+                    className="ws-settings-input"
+                    value={gitBranch}
+                    onChange={(event) => setGitBranch(event.target.value)}
+                    placeholder="main"
+                  />
+                </div>
+                <div className="ws-settings-field">
+                  <label className="ws-settings-label">Personal access token</label>
+                  <input
+                    className="ws-settings-input"
+                    type="password"
+                    value={gitToken}
+                    onChange={(event) => setGitToken(event.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+                <button
+                  className="ws-settings-btn ws-settings-btn--primary"
+                  onClick={handleLinkRepository}
+                  disabled={gitBusy || !repositoryUrl.trim() || !gitToken}
+                >
+                  {gitBusy ? 'Linking...' : 'Link Repository'}
+                </button>
+              </div>
+            ) : (
+              <div className="ws-settings-ai">
+                <p className="ws-settings-description">
+                  {gitStatus?.repositoryUrl} ({gitStatus?.branch})
+                </p>
+                <p className="ws-settings-hint">
+                  Status: {gitStatus?.state}
+                  {gitStatus?.lastSyncedAt ? ` · Last synced ${new Date(gitStatus.lastSyncedAt).toLocaleString()}` : ''}
+                </p>
+                {gitStatus?.conflictCount ? (
+                  <p className="ws-settings-test-result ws-settings-test-result--error">
+                    Preserved {gitStatus.conflictCount} conflicting item(s) as conflict copies.
+                  </p>
+                ) : null}
+                {gitStatus?.error ? (
+                  <p className="ws-settings-test-result ws-settings-test-result--error">{gitStatus.error}</p>
+                ) : null}
+                {gitActionError ? (
+                  <p className="ws-settings-test-result ws-settings-test-result--error">{gitActionError}</p>
+                ) : null}
+                <div className="ws-settings-field">
+                  <label className="ws-settings-label" htmlFor="git-sync-interval">Auto sync</label>
+                  <select
+                    id="git-sync-interval"
+                    className="ws-settings-select"
+                    value={gitStatus.syncIntervalMinutes}
+                    onChange={(event) => void handleSyncIntervalChange(Number(event.target.value))}
+                    disabled={gitBusy}
+                  >
+                    <option value={1}>Every minute</option>
+                    <option value={5}>Every 5 minutes</option>
+                    <option value={10}>Every 10 minutes</option>
+                    <option value={15}>Every 15 minutes</option>
+                    <option value={30}>Every 30 minutes</option>
+                    <option value={60}>Every hour</option>
+                  </select>
+                </div>
+                <div className="ws-settings-ai-actions">
+                  <button className="ws-settings-btn ws-settings-btn--primary" onClick={handleSyncNow} disabled={gitBusy}>
+                    {gitBusy || gitStatus?.state === 'syncing' ? 'Syncing...' : 'Sync Now'}
+                  </button>
+                  <button className="ws-settings-btn" onClick={handleUnlinkRepository} disabled={gitBusy}>
+                    Unlink
+                  </button>
+                </div>
+              </div>
+            )}
+            {gitStatus?.state === 'error' && gitStatus.error && gitStatus.repositoryUrl === null ? (
+              <p className="ws-settings-test-result ws-settings-test-result--error">{gitStatus.error}</p>
+            ) : null}
           </div>
 
           <div className="ws-settings-section">

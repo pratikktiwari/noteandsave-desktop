@@ -7,11 +7,14 @@ import type { Whiteboard } from '../types';
 export function useWhiteboards() {
   const { state, dispatch } = useWorkspace();
 
+  const loadWhiteboards = useCallback(async (includeDeleted = true) => {
+    const whiteboards = await listWhiteboards(includeDeleted);
+    dispatch({ type: 'SET_WHITEBOARDS', payload: whiteboards });
+  }, [dispatch]);
+
   useEffect(() => {
-    listWhiteboards(true).then((wbs) => {
-      dispatch({ type: 'SET_WHITEBOARDS', payload: wbs });
-    });
-  }, []);
+    void loadWhiteboards(true);
+  }, [loadWhiteboards]);
 
   const addWhiteboard = useCallback(async () => {
     const now = Date.now();
@@ -78,5 +81,5 @@ export function useWhiteboards() {
     dispatch({ type: 'UPDATE_WHITEBOARD', payload: updated });
   }, [state.whiteboards, dispatch]);
 
-  return { whiteboards: state.whiteboards, addWhiteboard, renameWhiteboard, saveWhiteboardDocument, removeWhiteboard, restoreWhiteboard: restoreWb, permanentlyDeleteWhiteboard: permanentlyDelete, duplicateWhiteboard: duplicate, pinWhiteboard, favoriteWhiteboard };
+  return { whiteboards: state.whiteboards, loadWhiteboards, addWhiteboard, renameWhiteboard, saveWhiteboardDocument, removeWhiteboard, restoreWhiteboard: restoreWb, permanentlyDeleteWhiteboard: permanentlyDelete, duplicateWhiteboard: duplicate, pinWhiteboard, favoriteWhiteboard };
 }

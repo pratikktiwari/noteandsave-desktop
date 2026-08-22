@@ -9,9 +9,8 @@ export function useAutosave(note: Note | null, delay = 500) {
   const { dispatch } = useWorkspace();
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noteRef = useRef<Note | null>(note);
+  const pendingNoteRef = useRef<Note | null>(null);
   const lastRevisionTimestampsRef = useRef<Record<string, number>>({});
-
-  useEffect(() => { noteRef.current = note; }, [note]);
 
   useEffect(() => {
     if (!note?.id) return;
@@ -26,8 +25,7 @@ export function useAutosave(note: Note | null, delay = 500) {
     return () => { cancelled = true; };
   }, [note?.id]);
 
-  const save = useCallback(async () => {
-    const currentNote = noteRef.current;
+  const saveNote = useCallback(async (currentNote: Note | null) => {
     if (!currentNote) return;
     dispatch({ type: 'SET_SAVE_STATUS', payload: 'saving' });
     try {
@@ -42,6 +40,9 @@ export function useAutosave(note: Note | null, delay = 500) {
         await saveRevision(currentNote.id, currentNote.title, currentNote.content);
         lastRevisionTimestampsRef.current[currentNote.id] = Date.now();
       }
+      if (noteRef.current?.id === currentNote.id && !pendingNoteRef.current) {
+        window.api.workspace.setEditorDirty(false);
+      }
       dispatch({ type: 'SET_SAVE_STATUS', payload: 'saved' });
       setTimeout(() => { dispatch({ type: 'SET_SAVE_STATUS', payload: 'idle' }); }, 2000);
     } catch {
@@ -49,10 +50,29 @@ export function useAutosave(note: Note | null, delay = 500) {
     }
   }, [dispatch]);
 
+  useEffect(() => {
+    if (noteRef.current?.id !== note?.id && pendingNoteRef.current) {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+      const pendingNote = pendingNoteRef.current;
+      pendingNoteRef.current = null;
+      void saveNote(pendingNote);
+    }
+    noteRef.current = note;
+  }, [note, saveNote]);
+
+  const save = useCallback(async () => saveNote(noteRef.current), [saveNote]);
+
   const debouncedSave = useCallback(() => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(save, delay);
-  }, [save, delay]);
+    pendingNoteRef.current = noteRef.current;
+    timeoutRef.current = setTimeout(() => {
+      const pendingNote = pendingNoteRef.current;
+      pendingNoteRef.current = null;
+      timeoutRef.current = null;
+      void saveNote(pendingNote);
+    }, delay);
+  }, [saveNote, delay]);
 
   useEffect(() => {
     const handleBlur = () => { if (noteRef.current) save(); };

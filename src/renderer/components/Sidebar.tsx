@@ -21,18 +21,28 @@ export function Sidebar({
   const { state, dispatch } = useWorkspace();
   const { folders, addFolder, loadFolders, removeFolder, renameFolder } =
     useFolders();
-  const { addNote, clearFolderFromNotes } = useNotes();
-  const { addWhiteboard } = useWhiteboards();
+  const { addNote, clearFolderFromNotes, loadNotes } = useNotes();
+  const { addWhiteboard, loadWhiteboards } = useWhiteboards();
   const { toggleTheme } = useLocalPreferences();
   const [foldersOpen, setFoldersOpen] = React.useState(true);
   const [menuFolderId, setMenuFolderId] = React.useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [gitStatus, setGitStatus] = useState<Awaited<ReturnType<typeof window.api.gitSync.status>> | null>(null);
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
 
   React.useEffect(() => {
     loadFolders();
   }, [loadFolders]);
+
+  React.useEffect(() => {
+    window.api.gitSync.status().then(setGitStatus);
+    return window.api.gitSync.onStatus(setGitStatus);
+  }, []);
+
+  React.useEffect(() => window.api.workspace.onChanged(() => {
+    void Promise.all([loadNotes(false), loadFolders(), loadWhiteboards(false)]);
+  }), [loadFolders, loadNotes, loadWhiteboards]);
 
   const setView = (view: SidebarView) => {
     if (view !== "folder") {
@@ -527,6 +537,22 @@ export function Sidebar({
         </button>
 
         <div className="ws-sidebar__social">
+          {gitStatus?.repositoryUrl && (
+            <button
+              className={`theme-toggle ws-sidebar__sync${gitStatus.state === 'syncing' ? ' ws-sidebar__sync--active' : ''}`}
+              onClick={() => void window.api.gitSync.now().then(setGitStatus)}
+              disabled={gitStatus.state === 'syncing'}
+              aria-label={gitStatus.state === 'syncing' ? 'Syncing notes with GitHub' : 'Sync notes with GitHub'}
+              title={`GitHub sync: ${gitStatus.state}`}
+            >
+              <svg className="ws-sidebar__sync-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20 7h-7V2" />
+                <path d="M4 17h7v5" />
+                <path d="M20 7a9 9 0 0 0-15-2L3 7" />
+                <path d="M4 17a9 9 0 0 0 15 2l2-2" />
+              </svg>
+            </button>
+          )}
           <button className="theme-toggle" onClick={() => setShowSettings(true)} aria-label="Settings">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="3" />

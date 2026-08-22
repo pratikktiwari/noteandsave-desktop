@@ -1,6 +1,6 @@
 # Note & Save — Desktop
 
-A local-first desktop note-taking app with a rich editor and whiteboards. Built with Electron, React, TipTap, and SQLite.
+A local-first desktop note-taking app with a rich editor, whiteboards, and optional GitHub synchronization. Built with Electron, React, and TipTap.
 
 ## Features
 
@@ -11,7 +11,8 @@ A local-first desktop note-taking app with a rich editor and whiteboards. Built 
 - **Revision history** — automatic snapshots every 5 minutes
 - **Slash commands** — type `/` for quick formatting
 - **Dark mode** — light and dark themes
-- **Fully offline** — all data stored locally in SQLite
+- **Fully offline** — notes remain available without a network connection
+- **Optional GitHub sync** — synchronize a portable workspace through a dedicated private repository
 - **Export** — Markdown, HTML, plain text, JSON
 
 ## Getting Started
@@ -29,11 +30,42 @@ npm start
 
 ## Data Storage
 
-Notes are stored in a SQLite database at:
+New workspaces store syncable content as readable files:
+
 ```
-~/Documents/NoteAndSave/workspace.db
+~/Documents/NoteAndSave/workspace/
+├── .noteandsave/manifest.json
+├── notes/<note-id>.md
+├── folders/<folder-id>.json
+├── whiteboards/<whiteboard-id>.excalidraw.json
+└── assets/<asset-id>.<extension>
 ```
-You can change this location in **Settings** (gear icon in the sidebar).
+
+Notes use Markdown with YAML frontmatter. Stable IDs in filenames keep renames portable and reduce Git conflicts. Device-only settings, encrypted credentials, AI conversations, and local revision snapshots remain outside the synchronized repository.
+
+Existing SQLite users are prompted to either migrate or keep their current storage. Migration is optional, stages and validates every record, and retains the original database plus a timestamped backup. Users who keep SQLite can migrate later from **Settings**; GitHub sync remains disabled until migration succeeds.
+
+## GitHub Sync
+
+GitHub sync requires a dedicated repository and a personal access token with access to that repository. Configure it in **Settings → GitHub Sync**. Tokens are encrypted with Electron's OS-backed `safeStorage` and are never written to the repository or remote URL.
+
+The app writes locally first, then synchronizes automatically after saves and periodically every five minutes by default. The periodic interval is configurable in Settings. The sidebar sync icon and Settings also provide manual sync. Synchronization never force-pushes. Concurrent edits to the same item are retained as conflict copies so neither version is silently discarded.
+
+For a repository initialized with a README, Note & Save retains the README and adds the workspace structure. A repository containing incompatible `notes`, `folders`, `whiteboards`, or `assets` data is rejected.
+
+### Portable repository format
+
+`.noteandsave/manifest.json` contains:
+
+```json
+{
+  "schemaVersion": 1,
+  "workspaceId": "stable-workspace-id",
+  "createdAt": 1770000000000
+}
+```
+
+Clients must reject unsupported newer schema versions without modifying the repository. Note frontmatter contains the stable ID, title, timestamps, folder ID, tags, pin/favorite/deleted flags, and note type. Images use relative `../assets/...` links. This format is the interoperability contract for future desktop, Android, and web clients.
 
 ## Packaging & Release
 
@@ -97,7 +129,8 @@ This builds on macOS, Windows, and Linux in CI and creates a draft GitHub Releas
 - **React 19** + TypeScript
 - **TipTap** — rich text editor
 - **Excalidraw** — whiteboard canvas
-- **better-sqlite3** — fast synchronous SQLite
+- **sql.js** — legacy workspace compatibility and device-local data
+- **isomorphic-git** — cross-platform Git synchronization
 - **Atkinson** font — accessible, clean typography
 
 ## Project Structure

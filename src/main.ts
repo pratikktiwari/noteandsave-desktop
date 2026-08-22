@@ -1,10 +1,15 @@
-import { app, BrowserWindow, Menu, shell, session, type MenuItemConstructorOptions } from 'electron';
+import { app, BrowserWindow, Menu, protocol, shell, session, type MenuItemConstructorOptions } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 
-import { initDatabase } from './main/database';
 import { registerIpcHandlers } from './main/ipc-handlers';
 import { registerAiHandlers } from './main/ai-handler';
+import { getImage, initializeWorkspaceService } from './main/workspace-service';
+import { initializeGitSync } from './main/git-sync';
+
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'noteandsave-asset', privileges: { secure: true, standard: true, supportFetchAPI: true } },
+]);
 
 if (started) {
   // During Squirrel install/update/uninstall events the process must exit
@@ -124,9 +129,9 @@ const bootstrap = async (): Promise<void> => {
   await app.whenReady();
 
   try {
-    await initDatabase();
+    await initializeWorkspaceService();
   } catch (err) {
-    console.error('Failed to initialize database:', err);
+    console.error('Failed to initialize workspace:', err);
   }
 
   app.setAboutPanelOptions({
@@ -136,13 +141,24 @@ const bootstrap = async (): Promise<void> => {
 
   registerIpcHandlers();
   registerAiHandlers();
+  initializeGitSync();
+  protocol.handle('noteandsave-asset', async (request) => {
+    const url = new URL(request.url);
+    const filename = decodeURIComponent(`${url.hostname}${url.pathname}`);
+    const id = path.basename(filename, path.extname(filename));
+    if (!/^[A-Za-z0-9_-]+$/.test(id)) return new Response('Invalid asset ID', { status: 400 });
+    const image = getImage(id);
+    if (!image) return new Response('Asset not found', { status: 404 });
+    const bytes = Buffer.from(image.data);
+    return new Response(bytes, { headers: { 'Content-Type': image.mimeType } });
+  });
   createMenu();
 
   // Set Content-Security-Policy header for all responses
   const isDev = !!MAIN_WINDOW_VITE_DEV_SERVER_URL;
   const csp = isDev
-    ? "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws://localhost:*;"
-    : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:;";
+    ? "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: noteandsave-asset:; font-src 'self' data:; connect-src 'self' ws://localhost:*;"
+    : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: noteandsave-asset:; font-src 'self' data:;";
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({

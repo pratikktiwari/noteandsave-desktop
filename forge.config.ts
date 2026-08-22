@@ -14,6 +14,24 @@ const config: ForgeConfig = {
     asar: false,
     icon: './assets/icon',
     executableName: 'noteandsave-desktop',
+    // Re-sign after packaging modifies Info.plist, otherwise macOS Gatekeeper
+    // reports the app as "damaged" once it carries a quarantine attribute
+    // (e.g. after downloading it from a GitHub release). No Developer ID
+    // certificate is available, so force ad-hoc signing explicitly -
+    // without an explicit identity, @electron/osx-sign searches for a
+    // Developer ID cert, fails to find one, and silently skips signing.
+    osxSign: {
+      identity: '-',
+      identityValidation: false,
+      // Hardened runtime enforces library validation, which requires all
+      // loaded frameworks to share a trusted Team ID. Ad-hoc signed
+      // components have no such shared identity, so with hardened runtime
+      // on, the app fails to launch with a dyld "different Team IDs" error.
+      // @electron/osx-sign only reads `hardenedRuntime` from the return
+      // value of `optionsForFile`, not from the top-level option, so it
+      // must be disabled this way.
+      optionsForFile: () => ({ hardenedRuntime: false }),
+    },
     ignore: (file: string) => {
       if (!file) return false;
       if (file.startsWith('/.vite')) return false;

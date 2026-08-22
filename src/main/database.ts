@@ -4,131 +4,39 @@ import fs from 'node:fs';
 import path from 'node:path';
 import initSqlJs, { Database as SqlJsDatabase } from 'sql.js';
 
-export type JsonPrimitive = string | number | boolean | null;
-export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
+import type {
+  CreateFolderInput,
+  CreateNoteInput,
+  CreateWhiteboardInput,
+  Folder,
+  ImageRecord,
+  JsonValue,
+  Note,
+  Revision,
+  SaveImageInput,
+  SaveRevisionInput,
+  UpdateFolderInput,
+  UpdateNoteInput,
+  UpdateWhiteboardInput,
+  Whiteboard,
+} from '../shared/workspace';
 
-export interface Note {
-  id: string;
-  title: string;
-  content: JsonValue;
-  createdAt: number;
-  updatedAt: number;
-  folderId: string | null;
-  tags: string[];
-  pinned: boolean;
-  favorite: boolean;
-  deleted: boolean;
-  type: string;
-}
-
-export interface CreateNoteInput {
-  id?: string;
-  title?: string;
-  content?: JsonValue;
-  createdAt?: number;
-  updatedAt?: number;
-  folderId?: string | null;
-  tags?: string[];
-  pinned?: boolean;
-  favorite?: boolean;
-  deleted?: boolean;
-  type?: string;
-}
-
-export interface UpdateNoteInput {
-  title?: string;
-  content?: JsonValue;
-  updatedAt?: number;
-  folderId?: string | null;
-  tags?: string[];
-  pinned?: boolean;
-  favorite?: boolean;
-  deleted?: boolean;
-  type?: string;
-}
-
-export interface Folder {
-  id: string;
-  name: string;
-  parentId: string | null;
-  createdAt: number;
-  order: number;
-}
-
-export interface CreateFolderInput {
-  id?: string;
-  name: string;
-  parentId?: string | null;
-  createdAt?: number;
-  order?: number;
-}
-
-export interface UpdateFolderInput {
-  name?: string;
-  parentId?: string | null;
-  order?: number;
-}
-
-export interface Whiteboard {
-  id: string;
-  title: string;
-  document: JsonValue;
-  createdAt: number;
-  updatedAt: number;
-  pinned: boolean;
-  favorite: boolean;
-  deleted: boolean;
-}
-
-export interface CreateWhiteboardInput {
-  id?: string;
-  title?: string;
-  document?: JsonValue;
-  createdAt?: number;
-  updatedAt?: number;
-  pinned?: boolean;
-  favorite?: boolean;
-  deleted?: boolean;
-}
-
-export interface UpdateWhiteboardInput {
-  title?: string;
-  document?: JsonValue;
-  updatedAt?: number;
-  pinned?: boolean;
-  favorite?: boolean;
-  deleted?: boolean;
-}
-
-export interface Revision {
-  id: string;
-  noteId: string;
-  content: JsonValue;
-  title: string;
-  timestamp: number;
-}
-
-export interface SaveRevisionInput {
-  id?: string;
-  noteId: string;
-  content: JsonValue;
-  title: string;
-  timestamp?: number;
-}
-
-export interface ImageRecord {
-  id: string;
-  data: Uint8Array;
-  mimeType: string;
-  createdAt: number;
-}
-
-export interface SaveImageInput {
-  id?: string;
-  data: Uint8Array | Buffer | ArrayBuffer | number[];
-  mimeType: string;
-  createdAt?: number;
-}
+export type {
+  CreateFolderInput,
+  CreateNoteInput,
+  CreateWhiteboardInput,
+  Folder,
+  ImageRecord,
+  JsonValue,
+  Note,
+  Revision,
+  SaveImageInput,
+  SaveRevisionInput,
+  UpdateFolderInput,
+  UpdateNoteInput,
+  UpdateWhiteboardInput,
+  Whiteboard,
+} from '../shared/workspace';
 
 let databasePathOverride: string | null = null;
 let database: SqlJsDatabase | null = null;
@@ -844,6 +752,9 @@ export const getImage = (id: string): ImageRecord | null => {
   const row = queryOne<ImageRow>('SELECT * FROM images WHERE id = ?', [id]);
   return row ? toImageRecord(row) : null;
 };
+
+export const listImages = (): ImageRecord[] =>
+  queryAll<ImageRow>('SELECT * FROM images ORDER BY created_at ASC').map(toImageRecord);
 
 export const deleteImage = (id: string): boolean => execute('DELETE FROM images WHERE id = ?', [id]) > 0;
 

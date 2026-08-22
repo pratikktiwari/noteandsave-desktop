@@ -193,6 +193,22 @@ export function Editor() {
     }
   }, [state.activeNoteId]);
 
+  useEffect(() => window.api.workspace.onChanged(() => {
+    const activeNoteId = state.activeNoteId;
+    if (!activeNoteId) return;
+    void getDBNote(activeNoteId).then((note) => {
+      if (!note) {
+        setCurrentNote(null);
+        currentNoteRef.current = null;
+        return;
+      }
+      prevNoteIdRef.current = null;
+      setCurrentNote(note);
+      currentNoteRef.current = note;
+      setTitleValue(note.title);
+    });
+  }), [state.activeNoteId]);
+
   // Keep ref in sync for onUpdate callback
   useEffect(() => {
     currentNoteRef.current = currentNote;
@@ -206,16 +222,19 @@ export function Editor() {
   }, [state.activeNoteId]);
 
   const handleImageFile = async (file: File) => {
-    const id = nanoid();
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64 = reader.result as string;
-      // Store in IndexedDB
-      await saveImage({ id, blob: file, mimeType: file.type, createdAt: Date.now() });
-      // Insert into editor as base64 (for simplicity in local-first)
-      editor?.chain().focus().setImage({ src: base64, alt: file.name }).run();
+    const extensions: Record<string, string> = {
+      'image/avif': 'avif',
+      'image/gif': 'gif',
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/svg+xml': 'svg',
+      'image/webp': 'webp',
     };
-    reader.readAsDataURL(file);
+    const extension = extensions[file.type];
+    if (!extension) throw new Error(`Unsupported image type ${file.type}`);
+    const id = nanoid();
+    await saveImage({ id, blob: file, mimeType: file.type, createdAt: Date.now() });
+    editor?.chain().focus().setImage({ src: `noteandsave-asset://${id}.${extension}`, alt: file.name }).run();
   };
 
   const editor = useEditor({
@@ -341,6 +360,7 @@ export function Editor() {
       };
       setCurrentNote(updated);
       dispatch({ type: 'UPDATE_NOTE', payload: updated });
+      window.api.workspace.setEditorDirty(true);
       debouncedSaveRef.current();
     },
   });
@@ -355,7 +375,7 @@ export function Editor() {
     };
   }, [editor, handleEditorContextMenu]);
 
-  const { debouncedSave, saveNow } = useAutosave(currentNote);
+  const { debouncedSave } = useAutosave(currentNote);
 
   // Keep debouncedSave ref in sync so onUpdate closure always calls latest
   useEffect(() => {

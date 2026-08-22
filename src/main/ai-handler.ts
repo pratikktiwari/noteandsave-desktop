@@ -20,6 +20,7 @@ import {
   type ProviderType,
 } from './ai-providers';
 import { getSetting, setSetting, getDb } from './database';
+import { listNotes } from './workspace-service';
 
 // ---------------------------------------------------------------------------
 // Chat history table
@@ -202,10 +203,7 @@ export function registerAiHandlers(): void {
 
       // System prompt with notes context
       if (payload.includeNotes !== false) {
-        const db = getDb();
-        let query = 'SELECT title, content, updated_at, tags FROM notes WHERE deleted = 0';
-        const params: any[] = [];
-
+        let notes = listNotes(false);
         if (payload.timeRange && payload.timeRange !== 'all') {
           const now = Date.now();
           const ranges: Record<string, number> = {
@@ -213,26 +211,10 @@ export function registerAiHandlers(): void {
             month: 30 * 24 * 60 * 60 * 1000,
             year: 365 * 24 * 60 * 60 * 1000,
           };
-          query += ' AND updated_at > ?';
-          params.push(now - (ranges[payload.timeRange] || ranges.week));
+          const cutoff = now - (ranges[payload.timeRange] || ranges.week);
+          notes = notes.filter((note) => note.updatedAt > cutoff);
         }
-
-        query += ' ORDER BY updated_at DESC LIMIT 30';
-
-        const stmt = db.prepare(query);
-        if (params.length) stmt.bind(params);
-
-        const notes: Array<{ title: string; content: any; updatedAt: number; tags: string[] }> = [];
-        while (stmt.step()) {
-          const row = stmt.getAsObject() as any;
-          notes.push({
-            title: row.title,
-            content: row.content,
-            updatedAt: row.updated_at,
-            tags: JSON.parse(row.tags || '[]'),
-          });
-        }
-        stmt.free();
+        notes = notes.sort((left, right) => right.updatedAt - left.updatedAt).slice(0, 30);
 
         const contextLimit = (config as any).contextLimit || 12000;
         const noteCharLimit = (config as any).noteCharLimit;

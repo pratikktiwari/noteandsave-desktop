@@ -192,6 +192,28 @@
   background-color: var(--ns-color-accent-bg);
 }
 
+.ws-sidebar__sync:disabled {
+  cursor: wait;
+  opacity: 1;
+}
+
+.ws-sidebar__sync--active .ws-sidebar__sync-icon {
+  animation: ws-sidebar-sync-spin 0.8s linear infinite;
+  transform-origin: center;
+}
+
+@keyframes ws-sidebar-sync-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-sidebar__sync--active .ws-sidebar__sync-icon {
+    animation-duration: 2s;
+  }
+}
+
 .ws-sidebar__footer .theme-toggle .sun {
   fill: transparent;
 }
@@ -2751,6 +2773,10 @@
   flex: 1;
 }
 
+.ws-settings-section + .ws-settings-section {
+  margin-top: var(--ns-spacing-xl);
+}
+
 .ws-settings-section-title {
   margin: 0 0 var(--ns-spacing-xs);
   font-size: var(--ns-text-base);
@@ -2809,6 +2835,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--ns-spacing-md);
+}
+
+.ws-settings-ai > .ws-settings-description,
+.ws-settings-ai > .ws-settings-test-result {
+  margin: 0;
 }
 
 .ws-settings-field {

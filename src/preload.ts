@@ -18,6 +18,16 @@ import type {
 
 type Unsubscribe = () => void;
 
+export interface GitSyncStatus {
+  state: 'unlinked' | 'idle' | 'dirty' | 'syncing' | 'conflict' | 'error';
+  repositoryUrl: string | null;
+  branch: string | null;
+  syncIntervalMinutes: number;
+  lastSyncedAt: number | null;
+  error: string | null;
+  conflictCount: number;
+}
+
 const subscribe = (channel: string, listener: () => void): Unsubscribe => {
   const wrappedListener = (): void => listener();
   ipcRenderer.on(channel, wrappedListener);
@@ -28,6 +38,30 @@ const subscribe = (channel: string, listener: () => void): Unsubscribe => {
 };
 
 export interface DesktopApi {
+  gitSync: {
+    status: () => Promise<GitSyncStatus>;
+    link: (input: { repositoryUrl: string; branch?: string; token: string }) => Promise<GitSyncStatus>;
+    unlink: () => Promise<GitSyncStatus>;
+    now: () => Promise<GitSyncStatus>;
+    setInterval: (minutes: number) => Promise<GitSyncStatus>;
+    onStatus: (listener: (status: GitSyncStatus) => void) => Unsubscribe;
+  };
+  workspace: {
+    status: () => Promise<{
+      mode: 'sqlite' | 'files';
+      legacyDbPath: string;
+      workspacePath: string;
+      canMigrate: boolean;
+    }>;
+    migrate: () => Promise<{
+      mode: 'sqlite' | 'files';
+      legacyDbPath: string;
+      workspacePath: string;
+      canMigrate: boolean;
+    }>;
+    onChanged: (listener: () => void) => Unsubscribe;
+    setEditorDirty: (dirty: boolean) => void;
+  };
   notes: {
     list: (includeDeleted?: boolean) => Promise<Note[]>;
     get: (id: string) => Promise<Note | null>;
@@ -104,6 +138,24 @@ declare global {
 }
 
 const api: DesktopApi = {
+  gitSync: {
+    status: () => ipcRenderer.invoke('gitSync:status'),
+    link: (input) => ipcRenderer.invoke('gitSync:link', input),
+    unlink: () => ipcRenderer.invoke('gitSync:unlink'),
+    now: () => ipcRenderer.invoke('gitSync:now'),
+    setInterval: (minutes) => ipcRenderer.invoke('gitSync:setInterval', minutes),
+    onStatus: (listener) => {
+      const handler = (_event: Electron.IpcRendererEvent, nextStatus: GitSyncStatus): void => listener(nextStatus);
+      ipcRenderer.on('gitSync:status', handler);
+      return () => ipcRenderer.removeListener('gitSync:status', handler);
+    },
+  },
+  workspace: {
+    status: () => ipcRenderer.invoke('workspace:status'),
+    migrate: () => ipcRenderer.invoke('workspace:migrate'),
+    onChanged: (listener) => subscribe('workspace:changed', listener),
+    setEditorDirty: (dirty) => ipcRenderer.send('workspace:editorDirty', dirty),
+  },
   notes: {
     list: (includeDeleted) => ipcRenderer.invoke('notes:list', includeDeleted) as Promise<Note[]>,
     get: (id) => ipcRenderer.invoke('notes:get', id) as Promise<Note | null>,

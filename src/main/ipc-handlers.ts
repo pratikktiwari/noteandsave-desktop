@@ -1,6 +1,21 @@
 import { BrowserWindow, dialog, ipcMain } from 'electron';
 
 import {
+  getRevision,
+  getSetting,
+  listRevisionsByNoteId,
+  saveRevision,
+  setSetting,
+  type CreateFolderInput,
+  type CreateNoteInput,
+  type CreateWhiteboardInput,
+  type SaveImageInput,
+  type SaveRevisionInput,
+  type UpdateFolderInput,
+  type UpdateNoteInput,
+  type UpdateWhiteboardInput,
+} from './database';
+import {
   createFolder,
   createNote,
   createWhiteboard,
@@ -12,32 +27,30 @@ import {
   duplicateWhiteboard,
   getImage,
   getNote,
-  getRevision,
-  getSetting,
+  getStorageStatus,
+  setRendererDirty,
   getWhiteboard,
   listFolders,
   listNotes,
-  listRevisionsByNoteId,
   listWhiteboards,
+  migrateWorkspaceNow,
   permanentlyDeleteNote,
   permanentlyDeleteWhiteboard,
   restoreNote,
   restoreWhiteboard,
   saveImage,
-  saveRevision,
-  setSetting,
   updateFolder,
   updateNote,
   updateWhiteboard,
-  type CreateFolderInput,
-  type CreateNoteInput,
-  type CreateWhiteboardInput,
-  type SaveImageInput,
-  type SaveRevisionInput,
-  type UpdateFolderInput,
-  type UpdateNoteInput,
-  type UpdateWhiteboardInput,
-} from './database';
+} from './workspace-service';
+import {
+  getGitSyncStatus,
+  linkGitRepository,
+  setGitSyncInterval,
+  syncGitNow,
+  unlinkGitRepository,
+  type LinkRepositoryInput,
+} from './git-sync';
 
 let registered = false;
 
@@ -83,6 +96,14 @@ export const registerIpcHandlers = (): void => {
 
   ipcMain.handle('settings:get', (_event, key: string) => getSetting(key));
   ipcMain.handle('settings:set', (_event, key: string, value: unknown) => setSetting(key, value));
+  ipcMain.handle('workspace:status', () => getStorageStatus());
+  ipcMain.handle('workspace:migrate', () => migrateWorkspaceNow());
+  ipcMain.on('workspace:editorDirty', (_event, dirty: boolean) => setRendererDirty(dirty));
+  ipcMain.handle('gitSync:status', () => getGitSyncStatus());
+  ipcMain.handle('gitSync:link', (_event, input: LinkRepositoryInput) => linkGitRepository(input));
+  ipcMain.handle('gitSync:unlink', () => unlinkGitRepository());
+  ipcMain.handle('gitSync:now', () => syncGitNow());
+  ipcMain.handle('gitSync:setInterval', (_event, minutes: number) => setGitSyncInterval(minutes));
 
   ipcMain.handle('dialog:selectFolder', async (event) => {
     const window = BrowserWindow.fromWebContents(event.sender) ?? undefined;

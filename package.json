@@ -10,7 +10,8 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
-    "lint": "eslint --ext .ts,.tsx ."
+    "lint": "eslint --ext .ts,.tsx .",
+    "test": "tsx --test src/main/*.test.ts"
   },
   "keywords": [],
   "author": {
@@ -39,6 +40,7 @@
     "electron-rebuild": "^3.2.9",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.32.0",
+    "tsx": "^4.20.6",
     "typescript": "~4.5.4",
     "vite": "^5.4.21"
   },
@@ -58,17 +60,20 @@
     "@tiptap/extension-task-list": "^3.27.1",
     "@tiptap/extension-text-style": "^3.28.0",
     "@tiptap/extension-underline": "^3.27.1",
+    "@tiptap/markdown": "^3.27.1",
     "@tiptap/react": "^3.27.1",
     "@tiptap/starter-kit": "^3.27.1",
     "@tiptap/suggestion": "^3.27.1",
     "electron-squirrel-startup": "^1.0.1",
+    "isomorphic-git": "^1.41.7",
     "katex": "^0.17.0",
     "lowlight": "^3.3.0",
     "nanoid": "^5.1.16",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "sql.js": "^1.14.1",
-    "tippy.js": "^6.3.7"
+    "tippy.js": "^6.3.7",
+    "yaml": "^2.8.1"
   },
   "allowScripts": {
     "electron@33.4.11": true,
