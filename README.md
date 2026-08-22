@@ -2,6 +2,8 @@
 
 A local-first desktop note-taking app with a rich editor, whiteboards, and optional GitHub synchronization. Built with Electron, React, and TipTap.
 
+This repository also includes an Android-first React Native client in `apps/mobile`. It uses the same portable workspace format and is structured so iOS support can follow.
+
 ## Features
 
 - **Rich text editor** — headings, lists, checklists, code blocks, tables, images, highlights
@@ -27,6 +29,19 @@ npx electron-rebuild
 # Start the app in development mode
 npm start
 ```
+
+### Android app
+
+The mobile app requires Node.js, Java 17, and Android SDK 36:
+
+```bash
+npm install
+npm run mobile:android
+```
+
+The debug app uses Expo's development client because the editor includes native code. After installing it once, start Metro with `npm run mobile:start` and scan the development-build QR code from the installed app. Both devices must be on the same network; the phone must be able to reach the Metro URL shown in the terminal (for example, `http://192.168.1.10:8081/status`).
+
+It includes notes and checklists, native rich-text editing, folders, tags, full-text search, pins, favorites, trash, themes, images, tables, and optional Git sync. Whiteboards and AI chat remain desktop-only for now.
 
 ## Data Storage
 
@@ -136,6 +151,10 @@ This builds on macOS, Windows, and Linux in CI and creates a draft GitHub Releas
 ## Project Structure
 
 ```
+apps/mobile/                  # Expo/React Native Android app
+packages/
+├── workspace/                # Shared workspace schema and domain types
+└── workspace-codec/          # Shared Markdown/YAML codec
 src/
 ├── main.ts                  # Electron main process entry
 ├── main/

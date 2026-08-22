@@ -1,0 +1,81 @@
+diff --git a/node_modules/react-native-enriched-html/android/src/main/java/com/swmansion/enriched/textinput/MeasurementStore.kt b/node_modules/react-native-enriched-html/android/src/main/java/com/swmansion/enriched/textinput/MeasurementStore.kt
+index 09363e0..8657d27 100644
+--- a/node_modules/react-native-enriched-html/android/src/main/java/com/swmansion/enriched/textinput/MeasurementStore.kt
++++ b/node_modules/react-native-enriched-html/android/src/main/java/com/swmansion/enriched/textinput/MeasurementStore.kt
+@@ -19,6 +19,7 @@ import com.facebook.yoga.YogaMeasureOutput
+ import com.swmansion.enriched.common.allowFontScalingFromProps
+ import com.swmansion.enriched.common.parser.EnrichedParser
+ import com.swmansion.enriched.common.pixelFromSpOrDp
++import com.swmansion.enriched.common.spans.interfaces.EnrichedHeadingSpan
+ import com.swmansion.enriched.textinput.spans.EnrichedLineHeightSpan
+ import com.swmansion.enriched.textinput.styles.HtmlStyle
+ import java.util.concurrent.ConcurrentHashMap
+@@ -96,7 +97,25 @@ object MeasurementStore {
+     }
+ 
+     val staticLayout = builder.build()
+-    val heightInSP = PixelUtil.toDIPFromPixel(staticLayout.height.toFloat())
++    val missingLineHeight =
++      if (text is Spannable) {
++        val lineHeightSpan = text.getSpans(0, textLength, EnrichedLineHeightSpan::class.java).firstOrNull()
++        if (lineHeightSpan == null) {
++          0
++        } else {
++          val requestedHeight = pixelFromSpOrDp(lineHeightSpan.lineHeight, lineHeightSpan.allowFontScaling)
++          (0 until staticLayout.lineCount).sumOf { line ->
++            val start = staticLayout.getLineStart(line)
++            val end = staticLayout.getLineEnd(line)
++            val isHeading = text.getSpans(start, end, EnrichedHeadingSpan::class.java).isNotEmpty()
++            val measuredHeight = staticLayout.getLineBottom(line) - staticLayout.getLineTop(line)
++            if (isHeading) 0 else maxOf(0, (requestedHeight - measuredHeight).toInt())
++          }
++        }
++      } else {
++        0
++      }
++    val heightInSP = PixelUtil.toDIPFromPixel((staticLayout.height + missingLineHeight).toFloat())
+     val widthInSP = PixelUtil.toDIPFromPixel(maxWidth)
+     return YogaMeasureOutput.make(widthInSP, heightInSP)
+   }
+diff --git a/node_modules/react-native-enriched-html/android/src/main/java/com/swmansion/enriched/textinput/spans/EnrichedLineHeightSpan.kt b/node_modules/react-native-enriched-html/android/src/main/java/com/swmansion/enriched/textinput/spans/EnrichedLineHeightSpan.kt
+index ddaeb7a..718da98 100644
+--- a/node_modules/react-native-enriched-html/android/src/main/java/com/swmansion/enriched/textinput/spans/EnrichedLineHeightSpan.kt
++++ b/node_modules/react-native-enriched-html/android/src/main/java/com/swmansion/enriched/textinput/spans/EnrichedLineHeightSpan.kt
+@@ -36,10 +36,18 @@ class EnrichedLineHeightSpan(
+ 
+     val lineHeightPx = pixelFromSpOrDp(lineHeight, allowFontScaling)
+     val currentHeight = (fm.descent - fm.ascent).toFloat()
+-    if (lineHeightPx <= currentHeight) return
++    if (lineHeightPx > currentHeight) {
++      val extra = (lineHeightPx - currentHeight).toInt()
++      fm.ascent -= extra
++      fm.top = minOf(fm.top, fm.ascent)
++    }
+ 
+-    val extra = (lineHeightPx - currentHeight).toInt()
+-    fm.ascent -= extra
+-    fm.top = minOf(fm.top, fm.ascent)
++    // Keep wrapped lines compact while giving explicit block boundaries enough
++    // visual separation to remain readable on narrow phone screens.
++    if (end > start && text[end - 1] == '\n') {
++      val blockSpacing = pixelFromSpOrDp(8f, allowFontScaling).toInt()
++      fm.descent += blockSpacing
++      fm.bottom = maxOf(fm.bottom, fm.descent)
++    }
+   }
+ }
+diff --git a/node_modules/react-native-enriched-html/src/web/EnrichedText.css b/node_modules/react-native-enriched-html/src/web/EnrichedText.css
+index 9001874..94571bb 100644
+--- a/node_modules/react-native-enriched-html/src/web/EnrichedText.css
++++ b/node_modules/react-native-enriched-html/src/web/EnrichedText.css
+@@ -3,6 +3,10 @@
+   margin-bottom: 0;
+ }
+ 
++.tiptap.ProseMirror > p:not(:last-child) {
++  margin-bottom: 8px;
++}
++
+ .tiptap.ProseMirror-focused {
+   outline: none;
+ }

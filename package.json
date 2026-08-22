@@ -5,13 +5,22 @@
   "description": "A local-first desktop note-taking app with rich editor and whiteboards",
   "main": ".vite/build/main.js",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "start": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",
-    "test": "tsx --test src/main/*.test.ts"
+    "test": "tsx --test src/main/*.test.ts",
+    "test:mobile": "npm test --workspace @noteandsave/mobile",
+    "typecheck:mobile": "npm run typecheck --workspace @noteandsave/mobile",
+    "mobile:start": "npm start --workspace @noteandsave/mobile",
+    "mobile:android": "npm run android --workspace @noteandsave/mobile",
+    "postinstall": "patch-package"
   },
   "keywords": [],
   "author": {
@@ -40,12 +49,15 @@
     "electron-rebuild": "^3.2.9",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.32.0",
+    "patch-package": "^8.0.1",
     "tsx": "^4.20.6",
     "typescript": "~4.5.4",
     "vite": "^5.4.21"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.18.1",
+    "@noteandsave/workspace": "1.0.0",
+    "@noteandsave/workspace-codec": "1.0.0",
     "@tiptap/extension-code-block-lowlight": "^3.27.1",
     "@tiptap/extension-color": "^3.28.0",
     "@tiptap/extension-highlight": "^3.27.1",
@@ -69,8 +81,8 @@
     "katex": "^0.17.0",
     "lowlight": "^3.3.0",
     "nanoid": "^5.1.16",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "sql.js": "^1.14.1",
     "tippy.js": "^6.3.7",
     "yaml": "^2.8.1"
